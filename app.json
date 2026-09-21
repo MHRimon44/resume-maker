@@ -1,0 +1,8 @@
+{
+  "name": "OfflineResumeMaker",
+  "displayName": "Resume Studio",
+  "react-native-google-mobile-ads": {
+    "android_app_id": "ca-app-pub-3194644435083545~9897177443",
+    "delay_app_measurement_init": true
+  }
+}
