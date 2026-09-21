@@ -1,6 +1,12 @@
 import { generatePDF } from 'react-native-html-to-pdf';
 import Share from 'react-native-share';
 import RNFS from 'react-native-fs';
+import {
+  errorCodes,
+  isErrorWithCode,
+  keepLocalCopy,
+  pick,
+} from '@react-native-documents/picker';
 import { ResumeBundle } from '../types';
 import { resumeHtml } from './resumeHtml';
 export async function exportPdf(bundle: ResumeBundle) {
@@ -48,4 +54,27 @@ export async function backupJson(data: unknown) {
     failOnCancel: false,
   });
   return path;
+}
+
+export async function pickBackupJson(): Promise<unknown | null> {
+  try {
+    const [file] = await pick();
+    const [copy] = await keepLocalCopy({
+      files: [{ uri: file.uri, fileName: file.name ?? 'resume_backup.json' }],
+      destination: 'cachesDirectory',
+    });
+    if (copy.status !== 'success') {
+      throw new Error('Could not read the selected backup file.');
+    }
+    const contents = await RNFS.readFile(copy.localUri.replace(/^file:\/\//, ''), 'utf8');
+    return JSON.parse(contents);
+  } catch (error) {
+    if (isErrorWithCode(error) && error.code === errorCodes.OPERATION_CANCELED) {
+      return null;
+    }
+    if (error instanceof SyntaxError) {
+      throw new Error('The selected file is not a valid JSON backup.');
+    }
+    throw error;
+  }
 }

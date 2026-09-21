@@ -9,6 +9,118 @@ import {
 } from '../types';
 import { makeId } from '../utils/id';
 import { sectionOrder } from '../constants/content';
+
+const templateIds: TemplateId[] = [
+  'classic',
+  'modern',
+  'minimal',
+  'europass',
+  'ats',
+];
+const sectionTypes: SectionType[] = [
+  'summary',
+  'experience',
+  'education',
+  'skills',
+  'projects',
+  'certifications',
+  'languages',
+  'references',
+];
+
+type Backup = {
+  schemaVersion: 1;
+  resumes: ResumeBundle[];
+};
+
+const isObject = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+const isString = (value: unknown): value is string => typeof value === 'string';
+const isFiniteNumber = (value: unknown): value is number =>
+  typeof value === 'number' && Number.isFinite(value);
+
+function readBackup(value: unknown): Backup {
+  if (
+    !isObject(value) ||
+    value.schemaVersion !== 1 ||
+    !Array.isArray(value.resumes)
+  ) {
+    throw new Error('This file is not a supported Resume Studio backup.');
+  }
+
+  const resumeIds = new Set<string>();
+  const childIds = new Set<string>();
+  for (const bundle of value.resumes) {
+    if (
+      !isObject(bundle) ||
+      !isObject(bundle.resume) ||
+      !Array.isArray(bundle.entries) ||
+      !Array.isArray(bundle.sections)
+    ) {
+      throw new Error('The backup contains incomplete resume data.');
+    }
+    const r = bundle.resume;
+    const personal = r.personal;
+    if (
+      !isString(r.id) ||
+      !r.id ||
+      resumeIds.has(r.id) ||
+      !isString(r.title) ||
+      !isString(r.templateId) ||
+      !templateIds.includes(r.templateId as TemplateId) ||
+      !isObject(personal) ||
+      !['fullName', 'headline', 'email', 'phone', 'location', 'website'].every(
+        key => isString(personal[key]),
+      ) ||
+      (personal.photoUri !== undefined && !isString(personal.photoUri)) ||
+      !isString(r.summary) ||
+      !isString(r.accent) ||
+      !isFiniteNumber(r.fontScale) ||
+      (r.paperSize !== 'A4' && r.paperSize !== 'Letter') ||
+      !isString(r.createdAt) ||
+      !isString(r.updatedAt)
+    ) {
+      throw new Error('The backup contains an invalid resume.');
+    }
+    resumeIds.add(r.id);
+
+    for (const entry of bundle.entries) {
+      if (
+        !isObject(entry) ||
+        !isString(entry.id) ||
+        !entry.id ||
+        childIds.has(entry.id) ||
+        entry.resumeId !== r.id ||
+        !isString(entry.type) ||
+        !sectionTypes.includes(entry.type as SectionType) ||
+        !['title', 'subtitle', 'startDate', 'endDate', 'details', 'meta'].every(
+          key => isString(entry[key]),
+        ) ||
+        !isFiniteNumber(entry.sortOrder)
+      ) {
+        throw new Error('The backup contains an invalid resume entry.');
+      }
+      childIds.add(entry.id);
+    }
+    for (const section of bundle.sections) {
+      if (
+        !isObject(section) ||
+        !isString(section.id) ||
+        !section.id ||
+        childIds.has(section.id) ||
+        section.resumeId !== r.id ||
+        !isString(section.type) ||
+        !sectionTypes.includes(section.type as SectionType) ||
+        typeof section.visible !== 'boolean' ||
+        !isFiniteNumber(section.sortOrder)
+      ) {
+        throw new Error('The backup contains an invalid resume section.');
+      }
+      childIds.add(section.id);
+    }
+  }
+  return value as Backup;
+}
 const rowResume = (x: any): Resume => ({
   ...x,
   personal: JSON.parse(x.personalJson),
@@ -200,6 +312,51 @@ export const resumeRepository = {
       exportedAt: new Date().toISOString(),
       resumes: await Promise.all(all.map(x => this.bundle(x.id))),
     };
+  },
+  async restoreAll(value: unknown) {
+    const backup = readBackup(value);
+    const d = await db();
+    await d.transaction(tx => {
+      tx.executeSql('DELETE FROM resumes');
+      for (const bundle of backup.resumes) {
+        const r = bundle.resume;
+        tx.executeSql('INSERT INTO resumes VALUES(?,?,?,?,?,?,?,?,?)', [
+          r.id,
+          r.title,
+          r.templateId,
+          JSON.stringify(r.personal),
+          r.summary,
+          JSON.stringify({ accent: r.accent, fontScale: r.fontScale }),
+          r.paperSize,
+          r.createdAt,
+          r.updatedAt,
+        ]);
+        for (const entry of bundle.entries) {
+          tx.executeSql('INSERT INTO entries VALUES(?,?,?,?,?,?,?,?,?,?,?)', [
+            entry.id,
+            entry.resumeId,
+            entry.type,
+            entry.title,
+            entry.subtitle,
+            entry.startDate,
+            entry.endDate,
+            entry.details,
+            entry.meta,
+            entry.sortOrder,
+          ]);
+        }
+        for (const section of bundle.sections) {
+          tx.executeSql('INSERT INTO sections VALUES(?,?,?,?,?)', [
+            section.id,
+            section.resumeId,
+            section.type,
+            section.visible ? 1 : 0,
+            section.sortOrder,
+          ]);
+        }
+      }
+    });
+    return backup.resumes.length;
   },
   async deleteAll() {
     await (await db()).executeSql('DELETE FROM resumes');

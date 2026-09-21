@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Alert,
   ScrollView,
@@ -12,18 +12,63 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button, Card, ScreenHeader } from '../components/ui';
 import { useSettingsStore } from '../store/settingsStore';
 import { resumeRepository } from '../repositories/resumeRepository';
-import { backupJson } from '../services/exportService';
+import { backupJson, pickBackupJson } from '../services/exportService';
 import { RootStackParamList } from '../types';
-import { space, useAppColors } from '../theme';
+import { useAppColors } from '../theme';
 
 export function SettingsScreen({
   navigation,
 }: NativeStackScreenProps<RootStackParamList, 'Settings'>) {
   const { darkMode, toggle, hydrate } = useSettingsStore();
+  const [isRestoring, setIsRestoring] = useState(false);
   const c = useAppColors();
   useEffect(() => {
     hydrate();
   }, [hydrate]);
+
+  const chooseBackup = async () => {
+    try {
+      const backup = await pickBackupJson();
+      if (backup === null) return;
+      Alert.alert(
+        'Restore this backup?',
+        'Your current resumes will be replaced by the resumes in this backup.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Restore',
+            style: 'destructive',
+            onPress: async () => {
+              setIsRestoring(true);
+              try {
+                const count = await resumeRepository.restoreAll(backup);
+                Alert.alert(
+                  'Backup restored',
+                  `${count} ${count === 1 ? 'resume' : 'resumes'} restored successfully.`,
+                );
+              } catch (error) {
+                Alert.alert(
+                  'Restore failed',
+                  error instanceof Error
+                    ? error.message
+                    : 'Could not restore this backup.',
+                );
+              } finally {
+                setIsRestoring(false);
+              }
+            },
+          },
+        ],
+      );
+    } catch (error) {
+      Alert.alert(
+        'Could not open backup',
+        error instanceof Error
+          ? error.message
+          : 'Please choose a valid JSON backup.',
+      );
+    }
+  };
   return (
     <SafeAreaView style={[s.page, { backgroundColor: c.canvas }]}>
       <ScreenHeader
@@ -59,6 +104,13 @@ export function SettingsScreen({
           <Button
             label="Export backup"
             onPress={async () => backupJson(await resumeRepository.exportAll())}
+          />
+          <View style={s.buttonSpacer} />
+          <Button
+            label={isRestoring ? 'Restoring…' : 'Import and restore backup'}
+            kind="ghost"
+            disabled={isRestoring}
+            onPress={chooseBackup}
           />
         </Card>
         <Card>
@@ -106,5 +158,6 @@ const s = StyleSheet.create({
   itemTitle: { fontSize: 15, fontWeight: '800' },
   copy: { lineHeight: 18, marginTop: 4, fontSize: 13 },
   spacer: { height: 11 },
+  buttonSpacer: { height: 8 },
   footer: { textAlign: 'center', margin: 18 },
 });
