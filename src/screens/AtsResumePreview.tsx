@@ -3,39 +3,42 @@ import { Image, StyleSheet, Text, View } from 'react-native';
 import { ResumeBundle, SectionType } from '../types';
 import { sectionLabels } from '../constants/content';
 import { entryExtraLines, parseEntryExtras } from '../utils/entryFields';
+import { entriesForSection, sectionTitle, fontFamilies, fontFor } from '../utils/resumeStyle';
 
 export function AtsResumePreview({ bundle }: { bundle: ResumeBundle }) {
   const { resume, entries } = bundle;
   const p = resume.personal;
   const scale = resume.fontScale;
-  const heading = (type: SectionType) => type === 'summary' ? 'Professional Summary' :
-    type === 'experience' ? 'Professional Experience' : type === 'skills' ? 'Technical Skills' :
-    type === 'projects' ? 'Selected Projects' : sectionLabels[type];
-  return <View style={s.page}>
+  const style = resume.style?.colors ?? {};
+  const fontFamily = fontFamilies.find(x => x.key === fontFor(resume))!.native;
+  const heading = (section: typeof bundle.sections[number]) => section.type === 'summary' ? 'Professional Summary' :
+    section.type === 'experience' ? 'Professional Experience' : section.type === 'skills' ? 'Technical Skills' :
+    section.type === 'projects' ? 'Selected Projects' : sectionTitle(section);
+  return <View style={[s.page, { backgroundColor: style.page }]}>
     <View style={s.header}>
       {!!p.photoUri && <Image source={{ uri: p.photoUri }} style={s.photo} />}
-      <Text style={[s.name, { fontSize: 19 * scale }]}>{p.fullName || 'Your Name'}</Text>
-      {!!p.headline && <Text style={[s.headline, { fontSize: 10 * scale }]}>{p.headline}</Text>}
-      <Text style={s.contact}>{[p.location, p.phone, p.email].filter(Boolean).join('  |  ')}</Text>
-      <Text style={s.contact}>{[p.website, p.github, p.portfolio].filter(Boolean).join('  |  ')}</Text>
+      <Text style={[s.name, { fontSize: 19 * scale, color: style.name, fontFamily }]}>{p.fullName || 'Your Name'}</Text>
+      {!!p.headline && <Text style={[s.headline, { fontSize: 10 * scale, color: style.headline, fontFamily }]}>{p.headline}</Text>}
+      <Text style={[s.contact, { color: style.contact, fontFamily }]}>{[p.location, p.phone, p.email].filter(Boolean).join('  |  ')}</Text>
+      <Text style={[s.contact, { color: style.contact, fontFamily }]}>{[p.website, p.github, p.portfolio].filter(Boolean).join('  |  ')}</Text>
     </View>
     {bundle.sections.filter(x => x.visible).sort((a, b) => a.sortOrder - b.sortOrder).map(section => {
-      const items = entries.filter(e => e.type === section.type);
+      const items = entriesForSection(bundle, section);
       if (section.type === 'summary' ? !resume.summary : !items.length) return null;
       return <View key={section.id} style={s.section}>
-        <Text style={[s.heading, { color: resume.accent, borderBottomColor: resume.accent, fontSize: 11 * scale }]}>{heading(section.type)}</Text>
-        {section.type === 'summary' ? <Text style={[s.body, { fontSize: 9 * scale }]}>{resume.summary}</Text> : items.map(e => {
+        <Text style={[s.heading, { color: section.color || style.sectionHeading || resume.accent, borderBottomColor: section.color || resume.accent, fontSize: 11 * scale, fontFamily }]}>{heading(section)}</Text>
+        {section.type === 'summary' ? <Text style={[s.body, { fontSize: 9 * scale, color: style.body, fontFamily }]}>{resume.summary}</Text> : items.map(e => {
           const extra = parseEntryExtras(e.meta);
           const right = section.type === 'projects' ? e.subtitle : [e.startDate, e.endDate].filter(Boolean).join(' – ');
           return <View key={e.id} style={s.item}>
-            <View style={s.row}><Text style={[s.itemTitle, { fontSize: 9 * scale }]}>{e.title}{section.type === 'skills' && e.title && !e.title.endsWith(':') ? ':' : ''}</Text>
-              {!!right && <Text style={[s.body, s.right, { fontSize: 8 * scale }]}>{right}</Text>}</View>
+            <View style={s.row}><Text style={[s.itemTitle, { fontSize: 9 * scale, color: style.entryTitle, fontFamily }]}>{e.title}{section.type === 'skills' && e.title && !e.title.endsWith(':') ? ':' : ''}</Text>
+              {!!right && <Text style={[s.body, s.right, { fontSize: 8 * scale, color: style.meta, fontFamily }]}>{right}</Text>}</View>
             {section.type !== 'projects' && (!!e.subtitle || !!extra.location) &&
-              <View style={s.row}><Text style={[s.italic, { fontSize: 8 * scale }]}>{e.subtitle}</Text><Text style={[s.italic, s.right, { fontSize: 8 * scale }]}>{extra.location}</Text></View>}
-            {!!e.details && <Text style={[s.body, { fontSize: 8 * scale }]}>{e.details.split('\n').filter(Boolean).map(line =>
+              <View style={s.row}><Text style={[s.italic, { fontSize: 8 * scale, color: style.meta, fontFamily }]}>{e.subtitle}</Text><Text style={[s.italic, s.right, { fontSize: 8 * scale, color: style.meta, fontFamily }]}>{extra.location}</Text></View>}
+            {!!e.details && <Text style={[s.body, { fontSize: 8 * scale, color: style.body, fontFamily }]}>{e.details.split('\n').filter(Boolean).map(line =>
               (section.type === 'experience' || section.type === 'leadership' || section.type === 'awards' ? '•  ' : '') + line.replace(/^[•›-]\s*/, '')).join('\n')}</Text>}
             {entryExtraLines(section.type, e.meta).filter(x => !x.startsWith('Work location:') && !x.startsWith('Campus / location:'))
-              .map((line, index) => <Text key={index} style={[s.body, { fontSize: 8 * scale }]}>{line}</Text>)}
+              .map((line, index) => <Text key={index} style={[s.body, { fontSize: 8 * scale, color: style.meta, fontFamily }]}>{line}</Text>)}
           </View>;
         })}
       </View>;

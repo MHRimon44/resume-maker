@@ -1,4 +1,5 @@
-import { ResumeBundle, SectionType, TemplateId } from '../types';
+import { ResumeBundle, ResumeSection, SectionType } from '../types';
+import { entriesForSection, sectionTitle } from '../utils/resumeStyle';
 import { sectionLabels } from '../constants/content';
 import { entryExtraLines, parseEntryExtras } from '../utils/entryFields';
 
@@ -14,10 +15,11 @@ export function globalResumeHtml(bundle: ResumeBundle): string {
   const color = /^#[0-9a-fA-F]{6}$/.test(resume.accent) ? resume.accent : '#174A92';
   const side = variant === 'profile' || variant === 'navy' || variant === 'timeline';
   const twoColumn = variant === 'executive';
-  const label = (type: SectionType) => type === 'summary' ? 'About me' : type === 'experience' ? 'Work experience' :
-    type === 'education' ? 'Education and training' : type === 'leadership' ? 'Activities' : sectionLabels[type];
-  const sectionHtml = (type: SectionType) => {
-    const records = entries.filter(e => e.type === type);
+  const label = (section: ResumeSection) => section.type === 'summary' ? 'About me' : section.type === 'experience' ? 'Work experience' :
+    section.type === 'education' ? 'Education and training' : section.type === 'leadership' ? 'Activities' : sectionTitle(section);
+  const sectionHtml = (section: ResumeSection) => {
+    const type = section.type;
+    const records = entriesForSection(bundle, section);
     if (type === 'summary' ? !resume.summary : !records.length) return '';
     const body = type === 'summary' ? `<p>${esc(resume.summary)}</p>` : records.map(e => {
       const extra = parseEntryExtras(e.meta);
@@ -29,10 +31,10 @@ export function globalResumeHtml(bundle: ResumeBundle): string {
           `<div>${type === 'experience' || type === 'leadership' ? '• ' : ''}${esc(x.replace(/^[•›-]\s*/, ''))}</div>`).join('')}</div>` : ''}
         ${rest.map(x => `<div class="meta">${esc(x)}</div>`).join('')}</article>`;
     }).join('');
-    return `<section class="section-${type}"><h2>${esc(label(type))}</h2>${body}</section>`;
+    return `<section data-section="${section.id}" class="section-${type}"><h2>${esc(label(section))}</h2>${body}</section>`;
   };
   const enabled = sections.filter(s => s.visible).sort((a, b) => a.sortOrder - b.sortOrder);
-  const renderSections = (filter: (type: SectionType) => boolean) => enabled.filter(s => filter(s.type)).map(s => sectionHtml(s.type)).join('');
+  const renderSections = (filter: (type: SectionType) => boolean) => enabled.filter(s => filter(s.type)).map(s => sectionHtml(s)).join('');
   const contacts = [p.phone, p.email, p.location, p.website, p.github, p.portfolio, p.nationality].filter(Boolean)
     .map(x => `<span>${esc(x)}</span>`).join('');
   const photo = p.photoUri?.startsWith('data:image/') ? `<img class="photo" src="${p.photoUri}" />` : '';

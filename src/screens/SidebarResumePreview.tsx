@@ -3,59 +3,62 @@ import { Image, StyleSheet, Text, View } from 'react-native';
 import { ResumeBundle, SectionType } from '../types';
 import { sectionLabels } from '../constants/content';
 import { entryExtraLines, parseEntryExtras } from '../utils/entryFields';
+import { entriesForSection, sectionTitle, fontFamilies, fontFor } from '../utils/resumeStyle';
 
 export function SidebarResumePreview({ bundle }: { bundle: ResumeBundle }) {
   const { resume, entries, sections } = bundle;
   const p = resume.personal;
   const scale = resume.fontScale;
+  const style = resume.style?.colors ?? {};
+  const fontFamily = fontFamilies.find(x => x.key === fontFor(resume))!.native;
   const visible = (type: SectionType) => sections.some(x => x.type === type && x.visible);
   const sideItems = (type: SectionType, heading: string) => {
     const list = visible(type) ? entries.filter(e => e.type === type) : [];
     if (!list.length) return null;
     return <View style={s.sideSection} key={type}>
-      <Text style={s.sideHeading}>{heading}</Text>
+      <Text style={[s.sideHeading, { color: style.sectionHeading, fontFamily, fontSize: 10 * scale }]}>{heading}</Text>
       {list.map(e => <View key={e.id} style={s.sideItem}>
-        <Text style={s.sideTitle}>{e.title}</Text>
-        {!!e.subtitle && <Text style={s.sideText}>{e.subtitle}</Text>}
-        {!!e.details && <Text style={s.sideText}>{e.details}</Text>}
+        <Text style={[s.sideTitle, { color: style.entryTitle, fontFamily, fontSize: 8 * scale }]}>{e.title}</Text>
+        {!!e.subtitle && <Text style={[s.sideText, { color: style.body, fontFamily, fontSize: 8 * scale }]}>{e.subtitle}</Text>}
+        {!!e.details && <Text style={[s.sideText, { color: style.body, fontFamily, fontSize: 8 * scale }]}>{e.details}</Text>}
       </View>)}
     </View>;
   };
-  return <View style={s.page}>
-    <View style={[s.top, { backgroundColor: resume.accent }]}>
-      <View style={s.identity}><Text style={[s.name, { fontSize: 22 * scale }]}>{p.fullName || 'Your Name'}</Text>
-        <Text style={[s.headline, { fontSize: 12 * scale }]}>{p.headline}</Text></View>
+  return <View style={[s.page, { backgroundColor: style.page }]}>
+    <View style={[s.top, { backgroundColor: style.header || resume.accent }]}>
+      <View style={s.identity}><Text style={[s.name, { fontSize: 22 * scale, color: style.name, fontFamily }]}>{p.fullName || 'Your Name'}</Text>
+        <Text style={[s.headline, { fontSize: 12 * scale, color: style.headline, fontFamily }]}>{p.headline}</Text></View>
       {!!p.photoUri && <Image source={{ uri: p.photoUri }} style={s.photo} />}
     </View>
     <View style={s.columns}>
-      <View style={s.sidebar}>
+      <View style={[s.sidebar, { backgroundColor: style.sidebar }]}>
         {[p.gender, p.dateOfBirth, p.nationality, p.phone, p.email, p.website, p.location, p.github, p.portfolio]
-          .filter(Boolean).map((value, index) => <Text key={index} style={s.sideContact}>{value}</Text>)}
+          .filter(Boolean).map((value, index) => <Text key={index} style={[s.sideContact, { color: style.contact, fontFamily, fontSize: 8 * scale }]}>{value}</Text>)}
         {sideItems('skills', 'SKILLS')}{sideItems('languages', 'LANGUAGES')}
         {sideItems('awards', 'HONORS & AWARDS')}{sideItems('certifications', 'CERTIFICATIONS')}
-        {!!p.interests && <View style={s.sideSection}><Text style={s.sideHeading}>INTERESTS</Text>
-          <Text style={s.sideText}>{p.interests}</Text></View>}
+        {!!p.interests && <View style={s.sideSection}><Text style={[s.sideHeading, { color: style.sectionHeading, fontFamily }]}>INTERESTS</Text>
+          <Text style={[s.sideText, { color: style.body, fontFamily }]}>{p.interests}</Text></View>}
       </View>
-      <View style={s.main}>
+      <View style={[s.main, { backgroundColor: style.page }]}>
         {sections.filter(x => x.visible && !(['skills', 'languages', 'awards', 'certifications'] as SectionType[]).includes(x.type))
           .sort((a, b) => a.sortOrder - b.sortOrder).map(section => {
-            const list = entries.filter(e => e.type === section.type);
+            const list = entriesForSection(bundle, section);
             if (section.type === 'summary' ? !resume.summary : !list.length) return null;
             const heading = section.type === 'summary' ? 'OBJECTIVE' : section.type === 'experience' ? 'WORK EXPERIENCE' :
-              section.type === 'leadership' ? 'ACTIVITIES' : sectionLabels[section.type].toUpperCase();
+              section.type === 'leadership' ? 'ACTIVITIES' : sectionTitle(section).toUpperCase();
             return <View key={section.id} style={s.section}>
-              <View style={s.headingRow}><Text style={[s.heading, { fontSize: 10 * scale }]}>{heading}</Text><View style={s.rule} /></View>
-              {section.type === 'summary' ? <Text style={s.body}>{resume.summary}</Text> : list.map(e => {
+              <View style={s.headingRow}><Text style={[s.heading, { fontSize: 10 * scale, color: section.color || style.sectionHeading, fontFamily }]}>{heading}</Text><View style={s.rule} /></View>
+              {section.type === 'summary' ? <Text style={[s.body, { color: style.body, fontFamily, fontSize: 8 * scale }]}>{resume.summary}</Text> : list.map(e => {
                 const extra = parseEntryExtras(e.meta);
                 const period = [e.startDate, e.endDate].filter(Boolean).join(' - ');
                 return <View style={s.item} key={e.id}>
                   <Text style={s.bullet}>•</Text>
                   <View style={s.itemContent}>
-                    <View style={s.row}><Text style={s.itemTitle}>{e.title}</Text><Text style={s.period}>{period}</Text></View>
-                    {!!(e.subtitle || extra.location) && <View style={s.row}><Text style={s.sub}>{e.subtitle}</Text><Text style={s.period}>{extra.location}</Text></View>}
-                    {!!e.details && <Text style={s.body}>{e.details}</Text>}
+                    <View style={s.row}><Text style={[s.itemTitle, { color: style.entryTitle, fontFamily, fontSize: 8 * scale }]}>{e.title}</Text><Text style={[s.period, { color: style.meta, fontFamily }]}>{period}</Text></View>
+                    {!!(e.subtitle || extra.location) && <View style={s.row}><Text style={[s.sub, { color: style.meta, fontFamily, fontSize: 8 * scale }]}>{e.subtitle}</Text><Text style={[s.period, { color: style.meta, fontFamily }]}>{extra.location}</Text></View>}
+                    {!!e.details && <Text style={[s.body, { color: style.body, fontFamily, fontSize: 8 * scale }]}>{e.details}</Text>}
                     {entryExtraLines(section.type, e.meta).filter(x => !x.startsWith('Work location:') && !x.startsWith('Campus / location:'))
-                      .map((line, index) => <Text style={s.body} key={index}>{line}</Text>)}
+                      .map((line, index) => <Text style={[s.body, { color: style.body, fontFamily }]} key={index}>{line}</Text>)}
                   </View>
                 </View>;
               })}

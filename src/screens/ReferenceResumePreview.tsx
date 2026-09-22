@@ -3,6 +3,7 @@ import { Image, StyleSheet, Text, View } from 'react-native';
 import { sectionLabels } from '../constants/content';
 import { ResumeBundle } from '../types';
 import { entryExtraLines, parseEntryExtras } from '../utils/entryFields';
+import { entriesForSection, sectionTitle, fontFamilies, fontFor } from '../utils/resumeStyle';
 
 export function ReferenceResumePreview({
   bundle,
@@ -12,6 +13,8 @@ export function ReferenceResumePreview({
   const { resume, entries } = bundle;
   const p = resume.personal;
   const accent = resume.accent;
+  const style = resume.style?.colors ?? {};
+  const fontFamily = fontFamilies.find(x => x.key === fontFor(resume))!.native;
   const scale = resume.fontScale;
   const contacts = [
     p.phone,
@@ -22,16 +25,16 @@ export function ReferenceResumePreview({
     p.location,
   ].filter(Boolean);
   return (
-    <View style={s.page}>
-      <View style={s.header}>
+    <View style={[s.page, { backgroundColor: style.page }]}>
+      <View style={[s.header, { backgroundColor: style.header }]}>
         {!!p.photoUri && <Image source={{ uri: p.photoUri }} style={s.photo} />}
         <View style={s.identity}>
-          <Text style={[s.name, { fontSize: 23 * scale }]}>{p.fullName || 'Your Name'}</Text>
-          <Text style={[s.headline, { fontSize: 10 * scale }]}>{p.headline}</Text>
+          <Text style={[s.name, { fontSize: 23 * scale, color: style.name, fontFamily }]}>{p.fullName || 'Your Name'}</Text>
+          <Text style={[s.headline, { fontSize: 10 * scale, color: style.headline, fontFamily }]}>{p.headline}</Text>
         </View>
         <View style={s.contacts}>
           {contacts.map((contact, index) => (
-            <Text key={index} style={[s.contact, { fontSize: 8 * scale }]}>
+            <Text key={index} style={[s.contact, { fontSize: 8 * scale, color: style.contact, fontFamily }]}>
               {contact}
             </Text>
           ))}
@@ -41,18 +44,18 @@ export function ReferenceResumePreview({
         .filter(item => item.visible)
         .sort((a, b) => a.sortOrder - b.sortOrder)
         .map(section => {
-          const items = entries.filter(entry => entry.type === section.type);
+          const items = entriesForSection(bundle, section);
           if (section.type === 'summary' && !resume.summary) return null;
           if (section.type !== 'summary' && !items.length) return null;
           return (
             <View key={section.id} style={s.section}>
-              <View style={[s.badge, { backgroundColor: accent }]}>
-                <Text style={s.badgeText}>
-                  {section.type === 'summary' ? 'Summary' : sectionLabels[section.type]}
+              <View style={[s.badge, { backgroundColor: section.color || accent }]}>
+                <Text style={[s.badgeText, { color: style.sectionHeading, fontFamily }]}>
+                  {section.type === 'summary' ? 'Summary' : sectionTitle(section)}
                 </Text>
               </View>
               {section.type === 'summary' ? (
-                <Text style={[s.description, { fontSize: 9 * scale }]}>
+                <Text style={[s.description, { fontSize: 9 * scale, color: style.body, fontFamily }]}>
                   •  {resume.summary}
                 </Text>
               ) : items.map(item => {
@@ -63,17 +66,17 @@ export function ReferenceResumePreview({
                 return (
                   <View key={item.id} style={s.item}>
                     <View style={s.itemRow}>
-                      <Text style={[s.itemTitle, { fontSize: 9 * scale }]}>{item.title}</Text>
-                      {!!right && <Text style={[s.right, { fontSize: 8 * scale, color: section.type === 'projects' ? accent : '#394047' }]}>{right}</Text>}
+                      <Text style={[s.itemTitle, { fontSize: 9 * scale, color: style.entryTitle, fontFamily }]}>{item.title}</Text>
+                      {!!right && <Text style={[s.right, { fontSize: 8 * scale, color: style.meta || (section.type === 'projects' ? accent : '#394047'), fontFamily }]}>{right}</Text>}
                     </View>
                     {!!item.subtitle && section.type !== 'projects' && (
-                      <Text style={[s.sub, { fontSize: 8 * scale }]}>{item.subtitle}</Text>
+                      <Text style={[s.sub, { fontSize: 8 * scale, color: style.meta, fontFamily }]}>{item.subtitle}</Text>
                     )}
                     {!!extra.location && (
-                      <Text style={[s.location, { fontSize: 8 * scale }]}>{extra.location}</Text>
+                      <Text style={[s.location, { fontSize: 8 * scale, color: style.meta, fontFamily }]}>{extra.location}</Text>
                     )}
                     {!!item.details && (
-                      <Text style={[s.description, { fontSize: 8 * scale }]}>
+                      <Text style={[s.description, { fontSize: 8 * scale, color: style.body, fontFamily }]}>
                         {section.type === 'skills' || section.type === 'references' ? '' : '›  '}
                         {item.details}
                       </Text>
@@ -81,7 +84,7 @@ export function ReferenceResumePreview({
                     {entryExtraLines(section.type, item.meta)
                       .filter(line => !line.startsWith('Work location:') && !line.startsWith('Campus / location:'))
                       .map((line, index) => (
-                        <Text key={index} style={[s.meta, { fontSize: 8 * scale }]}>{line}</Text>
+                        <Text key={index} style={[s.meta, { fontSize: 8 * scale, color: style.meta, fontFamily }]}>{line}</Text>
                       ))}
                   </View>
                 );

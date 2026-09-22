@@ -6,7 +6,7 @@ export const templates: {
   free: boolean;
 }[] = [
   {
-    id: 'mehedi',
+    id: 'custom',
     name: 'Navy Badge Resume',
     description: 'Compact navy headings and two-column header',
     free: true,
@@ -77,8 +77,11 @@ export const sectionLabels: Record<SectionType, string> = {
   leadership: 'Leadership Activities',
   awards: 'Awards',
   references: 'References',
+  custom: 'Custom section',
 };
-export const sectionOrder = Object.keys(sectionLabels) as SectionType[];
+export const sectionOrder = Object.keys(sectionLabels).filter(
+  x => x !== 'custom',
+) as SectionType[];
 export const summaryExamples = [
   'Product-focused mobile developer with a record of shipping reliable, accessible applications. Skilled at translating business needs into maintainable user experiences.',
   'Results-driven professional known for clear communication, thoughtful problem solving and consistent delivery across cross-functional teams.',

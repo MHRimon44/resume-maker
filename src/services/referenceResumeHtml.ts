@@ -1,4 +1,5 @@
-import { ResumeBundle, SectionType } from '../types';
+import { ResumeBundle, ResumeSection, SectionType } from '../types';
+import { entriesForSection, sectionTitle } from '../utils/resumeStyle';
 import { sectionLabels } from '../constants/content';
 import { entryExtraLines, parseEntryExtras } from '../utils/entryFields';
 
@@ -12,7 +13,8 @@ const detailLines = (details: string, bullets: boolean) => details
   .map(line => `<div class="detail">${bullets ? '<span class="chevron">›</span>' : ''}${esc(line)}</div>`)
   .join('');
 
-export function referenceResumeHtml({ resume, entries, sections }: ResumeBundle) {
+export function referenceResumeHtml(bundle: ResumeBundle) {
+  const { resume, sections } = bundle;
   const p = resume.personal;
   const accent = /^#[0-9a-fA-F]{6}$/.test(resume.accent) ? resume.accent : '#174A92';
   const contact = [
@@ -21,8 +23,9 @@ export function referenceResumeHtml({ resume, entries, sections }: ResumeBundle)
   ].filter((pair): pair is [string, string] => !!pair[1])
     .map(([label, value]) => `<div class="contact"><span>${label}:</span> ${esc(value)}</div>`)
     .join('');
-  const sectionHtml = (type: SectionType) => {
-    const items = entries.filter(entry => entry.type === type);
+  const sectionHtml = (section: ResumeSection) => {
+    const type = section.type;
+    const items = entriesForSection(bundle, section);
     if (type === 'summary' && !resume.summary) return '';
     if (type !== 'summary' && !items.length) return '';
     const body = type === 'summary'
@@ -48,7 +51,7 @@ export function referenceResumeHtml({ resume, entries, sections }: ResumeBundle)
           ${extras}
         </article>`;
       }).join('');
-    return `<section><h2><span>${esc(type === 'summary' ? 'Summary' : sectionLabels[type])}</span></h2>${body}</section>`;
+    return `<section><h2><span>${esc(type === 'summary' ? 'Summary' : sectionTitle(section))}</span></h2>${body}</section>`;
   };
   return `<!doctype html><html><head><meta charset="utf-8"/><style>
     @page { size: ${resume.paperSize}; margin: 0; }
@@ -88,6 +91,6 @@ export function referenceResumeHtml({ resume, entries, sections }: ResumeBundle)
       <div class="contacts">${contact}</div>
     </header>
     ${sections.filter(item => item.visible).sort((a, b) => a.sortOrder - b.sortOrder)
-      .map(item => sectionHtml(item.type).replace('<section>', `<section class="${item.type}">`)).join('')}
+      .map(item => sectionHtml(item).replace('<section>', `<section data-section="${item.id}" class="${item.type}">`)).join('')}
   </div></body></html>`;
 }

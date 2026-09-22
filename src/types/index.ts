@@ -1,6 +1,13 @@
-export type TemplateId = 'mehedi' | 'ats' | 'sidebar'
-  | 'international' | 'profile' | 'structured'
-  | 'navy' | 'timeline' | 'executive';
+export type TemplateId =
+  | 'custom'
+  | 'ats'
+  | 'sidebar'
+  | 'international'
+  | 'profile'
+  | 'structured'
+  | 'navy'
+  | 'timeline'
+  | 'executive';
 export type PaperSize = 'A4' | 'Letter';
 export type SectionType =
   | 'summary'
@@ -12,7 +19,24 @@ export type SectionType =
   | 'languages'
   | 'leadership'
   | 'awards'
-  | 'references';
+  | 'references'
+  | 'custom';
+export type FontFamily = 'sans' | 'serif' | 'mono';
+export type ColorRole =
+  | 'page'
+  | 'header'
+  | 'sidebar'
+  | 'name'
+  | 'headline'
+  | 'contact'
+  | 'sectionHeading'
+  | 'entryTitle'
+  | 'meta'
+  | 'body';
+export type ResumeStyle = {
+  fontFamily?: FontFamily;
+  colors?: Partial<Record<ColorRole, string>>;
+};
 export type Personal = {
   fullName: string;
   headline: string;
@@ -36,6 +60,7 @@ export type Resume = {
   summary: string;
   accent: string;
   fontScale: number;
+  style?: ResumeStyle;
   paperSize: PaperSize;
   createdAt: string;
   updatedAt: string;
@@ -51,6 +76,7 @@ export type Entry = {
   details: string;
   meta: string;
   sortOrder: number;
+  sectionId?: string;
 };
 export type ResumeSection = {
   id: string;
@@ -58,6 +84,8 @@ export type ResumeSection = {
   type: SectionType;
   visible: boolean;
   sortOrder: number;
+  title?: string;
+  color?: string;
 };
 export type ResumeBundle = {
   resume: Resume;

@@ -25,7 +25,6 @@ import {
   bulletExamples,
   sectionLabels,
   summaryExamples,
-  templates,
 } from '../constants/content';
 import { resumeRepository } from '../repositories/resumeRepository';
 import { Entry, ResumeBundle, RootStackParamList, SectionType } from '../types';
@@ -36,6 +35,7 @@ import { makeId } from '../utils/id';
 import { chooseResumePhoto } from '../services/photoService';
 import { takeTemplateForEditor } from '../store/templateSelection';
 import { ColorPicker } from '../components/ColorPicker';
+import { colorRoles, fontFamilies, sectionTitle } from '../utils/resumeStyle';
 import {
   entryFields,
   parseEntryExtras,
@@ -47,7 +47,8 @@ export function EditorScreen({
 }: NativeStackScreenProps<RootStackParamList, 'Editor'>) {
   const c = useAppColors();
   const [data, setData] = useState<ResumeBundle>(),
-    [tab, setTab] = useState<SectionType | 'basics' | 'sections'>('basics'),
+    [tab, setTab] = useState<string>('basics'),
+    [newSection, setNewSection] = useState(''),
     [entry, setEntry] = useState<Entry>(),
     [saving, setSaving] = useState(false),
     [errors, setErrors] = useState<Record<string, string>>({});
@@ -96,6 +97,11 @@ export function EditorScreen({
       );
       setErrors({});
       setSaving(true);
+      if (data.sections.some(item => item.type === 'custom' && !item.title?.trim())) {
+        Alert.alert('Name required', 'Give every custom section a name.');
+        setTab('sections');
+        return;
+      }
       await resumeRepository.saveBundle(data);
       Alert.alert('Saved', 'Your changes are stored on this device.');
     } catch (e) {
@@ -113,11 +119,13 @@ export function EditorScreen({
   const section =
     tab === 'basics' || tab === 'sections'
       ? undefined
-      : data.sections.find(x => x.type === tab);
+      : data.sections.find(x => x.type === tab || x.id === tab);
   const sectionEntries =
     tab === 'basics' || tab === 'sections'
       ? []
-      : data.entries.filter(x => x.type === tab);
+      : data.entries.filter(x => section?.type === 'custom'
+        ? x.type === 'custom' && x.sectionId === section.id
+        : x.type === section?.type);
   return (
     <SafeAreaView style={[s.page, { backgroundColor: c.canvas }]}>
       <ScreenHeader
@@ -138,13 +146,8 @@ export function EditorScreen({
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={s.tabs}
       >
-        {(
-          ['basics', 'sections', ...Object.keys(sectionLabels)] as (
-            | SectionType
-            | 'basics'
-            | 'sections'
-          )[]
-        ).map(x => (
+        {(['basics', 'sections', ...Object.keys(sectionLabels).filter(x => x !== 'custom'),
+          ...data.sections.filter(x => x.type === 'custom').map(x => x.id)]).map(x => (
           <Chip
             key={x}
             label={
@@ -152,7 +155,7 @@ export function EditorScreen({
                 ? 'Basics'
                 : x === 'sections'
                 ? 'Layout'
-                : sectionLabels[x]
+                : data.sections.find(s => s.id === x)?.title || sectionLabels[x as SectionType]
             }
             selected={tab === x}
             onPress={() => setTab(x)}
@@ -169,7 +172,7 @@ export function EditorScreen({
             <Text style={[s.heading, { color: c.ink }]}>
               Start with the essentials.
             </Text>
-            <Text style={[s.help, { color: c.muted }]}>
+            <Text style={[s.help, { color: c.muted }]}> 
               These details make the first impression on your CV.
             </Text>
             <Card>
@@ -292,58 +295,33 @@ export function EditorScreen({
               Set the page, then arrange what appears in your document.
             </Text>
             <Card>
-              <Text style={[s.smallTitle, { color: c.ink }]}>Template</Text>
+              <Text style={[s.smallTitle, { color: c.ink }]}>Font size</Text>
               <View style={s.choiceRow}>
-                {templates.map(item => (
-                  <Chip
-                    key={item.id}
-                    label={item.name}
-                    selected={r.templateId === item.id}
-                    onPress={() => patch({
-                      templateId: item.id,
-                      accent: r.accent,
-                    })}
-                  />
+                {[0.75, 0.85, 1, 1.15, 1.3, 1.5].map(x => (
+                  <Chip key={x} label={`${Math.round(x * 100)}%`} selected={r.fontScale === x}
+                    onPress={() => patch({ fontScale: x })} />
                 ))}
               </View>
-              <Text style={[s.smallTitle, { color: c.ink }]}>Paper size</Text>
+              <Text style={[s.smallTitle, { color: c.ink }]}>Font family</Text>
               <View style={s.choiceRow}>
-                {(['A4', 'Letter'] as const).map(x => (
-                  <Chip
-                    key={x}
-                    label={x}
-                    selected={r.paperSize === x}
-                    onPress={() => patch({ paperSize: x })}
-                  />
-                ))}
+                {fontFamilies.map(x => <Chip key={x.key} label={x.label}
+                  selected={(r.style?.fontFamily ?? (r.templateId === 'ats' ? 'serif' : 'sans')) === x.key}
+                  onPress={() => patch({ style: { ...r.style, fontFamily: x.key } })} />)}
               </View>
-              <Text style={[s.smallTitle, { color: c.ink }]}>Typography</Text>
-              <View style={s.choiceRow}>
-                {[0.9, 1, 1.1].map(x => (
-                  <Chip
-                    key={x}
-                    label={x === 1 ? 'Standard' : x < 1 ? 'Compact' : 'Large'}
-                    selected={r.fontScale === x}
-                    onPress={() => patch({ fontScale: x })}
-                  />
-                ))}
-              </View>
-              <Text style={[s.smallTitle, { color: c.ink }]}>Accent</Text>
+              <Text style={[s.smallTitle, { color: c.ink }]}>Accent and design colors</Text>
+              <Text style={[s.help, { color: c.muted }]}>Choose colors for each part of the document.</Text>
+              <Text style={[s.smallTitle, { color: c.ink }]}>Accent / divider</Text>
               <ColorPicker value={r.accent} onChange={accent => patch({ accent })} />
-              <View style={s.choiceRow}>
-                {['#5B5CE2', '#173B57', '#23856D', '#D16B47'].map(x => (
-                  <Pressable
-                    accessibilityLabel={`Accent ${x}`}
-                    key={x}
-                    onPress={() => patch({ accent: x })}
-                    style={[
-                      s.swatch,
-                      { backgroundColor: x },
-                      r.accent === x && s.swatchOn,
-                    ]}
-                  />
-                ))}
-              </View>
+              {colorRoles.map(({ key, label }) => (
+                <View key={key} style={{ marginTop: 10 }}>
+                  <Text style={[s.smallTitle, { color: c.ink }]}>{label}</Text>
+                  <ColorPicker value={r.style?.colors?.[key] ?? (
+                    key === 'sidebar' ? '#293844' : key === 'header' ? r.accent :
+                    key === 'page' ? '#FFFFFF' : key === 'contact' ? '#374151' : '#222222'
+                  )} onChange={value => patch({ style: { ...r.style,
+                    colors: { ...r.style?.colors, [key]: value } } })} />
+                </View>
+              ))}
             </Card>
             <View style={s.gap}>
               {[...data.sections]
@@ -363,7 +341,7 @@ export function EditorScreen({
                         }
                       />
                       <Text style={[s.orderTitle, { color: c.ink }]}>
-                        {sectionLabels[x.type]}
+                        {sectionTitle(x)}
                       </Text>
                       <Pressable onPress={() => reorder(i, -1)}>
                         <Text style={s.orderButton}>↑</Text>
@@ -372,9 +350,47 @@ export function EditorScreen({
                         <Text style={s.orderButton}>↓</Text>
                       </Pressable>
                     </View>
+                    {x.type === 'custom' && <>
+                      <Field label="Section name" value={x.title ?? ''}
+                        onChangeText={title => setData({ ...data, sections: data.sections.map(z =>
+                          z.id === x.id ? { ...z, title } : z) })} />
+                      <Button kind="danger" label="Remove custom section" onPress={() =>
+                        Alert.alert('Remove section?', 'Its entries will also be removed when you save.', [
+                          { text: 'Cancel', style: 'cancel' },
+                          { text: 'Remove', style: 'destructive', onPress: () => {
+                            setData(current => current && ({ ...current,
+                              sections: current.sections.filter(z => z.id !== x.id),
+                              entries: current.entries.filter(e => e.sectionId !== x.id),
+                            }));
+                            if (tab === x.id) setTab('sections');
+                          } },
+                        ])} />
+                    </>}
+                    <Text style={[s.smallTitle, { color: c.ink }]}>Section heading color</Text>
+                    <ColorPicker value={x.color || r.style?.colors?.sectionHeading || r.accent}
+                      onChange={color => setData({ ...data, sections: data.sections.map(z =>
+                        z.id === x.id ? { ...z, color } : z) })} />
                   </Card>
                 ))}
             </View>
+            <Card>
+              <Field label="New section name" placeholder="e.g. Publications, Volunteer work"
+                value={newSection} onChangeText={setNewSection} />
+              <Button label="＋ Add custom section" onPress={() => {
+                const title = newSection.trim();
+                if (!title) { Alert.alert('Name required', 'Enter a section name.'); return; }
+                if (data.sections.some(x => sectionTitle(x).toLowerCase() === title.toLowerCase())) {
+                  Alert.alert('Already exists', 'Choose a different section name.'); return;
+                }
+                const id = makeId();
+                setData({ ...data, sections: [...data.sections, {
+                  id, resumeId: r.id, type: 'custom', title, visible: true,
+                  sortOrder: data.sections.length,
+                }] });
+                setNewSection('');
+                setTab(id);
+              }} />
+            </Card>
           </>
         ) : tab === 'summary' ? (
           <>
@@ -393,7 +409,7 @@ export function EditorScreen({
                   setData({
                     ...data,
                     sections: data.sections.map(x =>
-                      x.type === tab ? { ...x, visible: v } : x,
+                      x.id === section?.id ? { ...x, visible: v } : x,
                     ),
                   })
                 }
@@ -426,7 +442,7 @@ export function EditorScreen({
             <View style={s.sectionHead}>
               <View>
                 <Text style={[s.heading, { color: c.ink }]}>
-                  {sectionLabels[tab]}
+                  {section ? sectionTitle(section) : "Section"}
                 </Text>
                 <Text style={[s.help, { color: c.muted }]}>
                   Add, edit and organize structured details.
@@ -438,7 +454,7 @@ export function EditorScreen({
                   setData({
                     ...data,
                     sections: data.sections.map(x =>
-                      x.type === tab ? { ...x, visible: v } : x,
+                      x.id === section?.id ? { ...x, visible: v } : x,
                     ),
                   })
                 }
@@ -449,7 +465,7 @@ export function EditorScreen({
                 <Pressable key={e.id} onPress={() => setEntry(e)}>
                   <Card>
                     <Text style={[s.entryTitle, { color: c.ink }]}>
-                      {e.title || `Untitled ${sectionLabels[tab]}`}
+                      {e.title || `Untitled ${section ? sectionTitle(section) : "Section"}`}
                     </Text>
                     <Text style={[s.entrySub, { color: c.muted }]}>
                       {e.subtitle || 'Tap to add details'}
@@ -458,11 +474,11 @@ export function EditorScreen({
                 </Pressable>
               ))}
               <Button
-                label={`＋ Add ${sectionLabels[tab]}`}
+                label={`＋ Add ${section ? sectionTitle(section) : "Section"}`}
                 onPress={() => setEntry({
                   id: makeId(),
                   resumeId: r.id,
-                  type: tab,
+                  type: section?.type ?? 'custom', sectionId: section?.type === 'custom' ? section.id : undefined,
                   title: '', subtitle: '', startDate: '', endDate: '',
                   details: '', meta: '', sortOrder: Date.now(),
                 })}
@@ -473,6 +489,7 @@ export function EditorScreen({
       </ScrollView>
       <EntryModal
         value={entry}
+        sectionName={section ? sectionTitle(section) : undefined}
         onClose={() => setEntry(undefined)}
         onDone={saved => {
           setData(current => current && ({
@@ -509,8 +526,10 @@ function EntryModal({
   onClose,
   onDone,
   onDelete,
+  sectionName,
 }: {
   value?: Entry;
+  sectionName?: string;
   onClose: () => void;
   onDone: (entry: Entry) => void;
   onDelete: (id: string) => void;
@@ -530,7 +549,6 @@ function EntryModal({
       <SafeAreaView style={[s.modal, { backgroundColor: c.canvas }]}>
         <StatusBar
           barStyle={darkMode ? 'light-content' : 'dark-content'}
-          backgroundColor={c.canvas}
         />
         <ScrollView
           style={{ backgroundColor: c.canvas }}
@@ -538,7 +556,7 @@ function EntryModal({
           keyboardShouldPersistTaps="handled"
         >
           <Text style={[s.heading, { color: c.ink }]}>
-            Edit {sectionLabels[draft.type]}
+            Edit {sectionName || sectionLabels[draft.type]}
           </Text>
           <View style={s.form}>
             <Field

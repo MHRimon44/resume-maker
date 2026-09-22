@@ -1,11 +1,13 @@
 import { ResumeBundle, SectionType } from '../types';
+import { entriesForSection, sectionTitle } from '../utils/resumeStyle';
 import { sectionLabels } from '../constants/content';
 import { entryExtraLines, parseEntryExtras } from '../utils/entryFields';
 
 const esc = (s: string = '') => s.replace(/[&<>"']/g, x =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[x]!));
 
-export function sidebarResumeHtml({ resume, entries, sections }: ResumeBundle): string {
+export function sidebarResumeHtml(bundle: ResumeBundle): string {
+  const { resume, entries, sections } = bundle;
   const p = resume.personal;
   const accent = /^#[0-9a-fA-F]{6}$/.test(resume.accent) ? resume.accent : '#5689A4';
   const visible = (type: SectionType) => sections.some(s => s.type === type && s.visible);
@@ -21,11 +23,11 @@ export function sidebarResumeHtml({ resume, entries, sections }: ResumeBundle): 
   const main = sections.filter(s => s.visible && !(['skills', 'awards', 'certifications', 'languages'] as SectionType[]).includes(s.type))
     .sort((a, b) => a.sortOrder - b.sortOrder).map(section => {
       const type = section.type;
-      if (type === 'summary') return resume.summary ? `<section><h2><span>OBJECTIVE</span></h2><p>${esc(resume.summary)}</p></section>` : '';
-      const data = items(type);
+      if (type === 'summary') return resume.summary ? `<section data-section="${section.id}"><h2><span>OBJECTIVE</span></h2><p>${esc(resume.summary)}</p></section>` : '';
+      const data = entriesForSection(bundle, section);
       if (!data.length) return '';
-      const title = type === 'experience' ? 'WORK EXPERIENCE' : type === 'leadership' ? 'ACTIVITIES' : sectionLabels[type].toUpperCase();
-      return `<section><h2><span>${esc(title)}</span></h2>${data.map(e => {
+      const title = type === 'experience' ? 'WORK EXPERIENCE' : type === 'leadership' ? 'ACTIVITIES' : sectionTitle(section).toUpperCase();
+      return `<section data-section="${section.id}"><h2><span>${esc(title)}</span></h2>${data.map(e => {
         const extra = parseEntryExtras(e.meta);
         const period = [e.startDate, e.endDate].filter(Boolean).join(' - ');
         const meta = entryExtraLines(type, e.meta).filter(x => !x.startsWith('Work location:') && !x.startsWith('Campus / location:'));
