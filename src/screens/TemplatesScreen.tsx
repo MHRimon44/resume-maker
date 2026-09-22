@@ -20,6 +20,13 @@ import { chooseTemplateForEditor } from '../store/templateSelection';
 const accents: Record<TemplateId, string> = {
   mehedi: '#174A92',
   ats: '#173B57',
+  sidebar: '#5689A4',
+  international: '#0E4C77',
+  profile: '#16439B',
+  structured: '#81878E',
+  navy: '#0D3156',
+  timeline: '#154989',
+  executive: '#D69B33',
 };
 
 export function TemplatesScreen({
@@ -54,7 +61,7 @@ export function TemplatesScreen({
       />
       <View style={s.head}>
         <Text style={[s.kicker, { color: c.primary }]}>
-          TWO RESUME TEMPLATES
+          NINE RESUME TEMPLATES
         </Text>
         <Text style={[s.title, { color: c.ink }]}>
           Your resume template.
@@ -77,7 +84,9 @@ export function TemplatesScreen({
               { backgroundColor: c.surface, borderColor: c.line },
             ]}
           >
-            <View style={[s.paper, { borderTopColor: accents[item.id] }]}>
+            <View style={[s.paper, { borderTopColor: accents[item.id] }]}> 
+              {(['sidebar', 'profile', 'navy', 'timeline'] as TemplateId[]).includes(item.id) &&
+                <View style={[s.paperSidebar, { backgroundColor: item.id === 'timeline' ? '#E5F0FC' : item.id === 'profile' ? '#F4F5F7' : '#293844' }]} />}
               <View
                 style={[
                   s.paperName,
@@ -166,6 +175,10 @@ const s = StyleSheet.create({
     borderTopWidth: 5,
     padding: 10,
     elevation: 2,
+  },
+  paperSidebar: {
+    position: 'absolute', left: 0, top: 0, bottom: 0, width: '30%',
+    backgroundColor: '#293844',
   },
   paperName: { height: 6, borderRadius: 3, marginBottom: 7 },
   paperContact: {

@@ -1,4 +1,6 @@
-export type TemplateId = 'mehedi' | 'ats';
+export type TemplateId = 'mehedi' | 'ats' | 'sidebar'
+  | 'international' | 'profile' | 'structured'
+  | 'navy' | 'timeline' | 'executive';
 export type PaperSize = 'A4' | 'Letter';
 export type SectionType =
   | 'summary'
@@ -21,6 +23,10 @@ export type Personal = {
   github?: string;
   portfolio?: string;
   photoUri?: string;
+  gender?: string;
+  dateOfBirth?: string;
+  interests?: string;
+  nationality?: string;
 };
 export type Resume = {
   id: string;

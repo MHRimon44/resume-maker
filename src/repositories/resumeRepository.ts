@@ -10,8 +10,15 @@ import {
 import { makeId } from '../utils/id';
 import { sectionOrder } from '../constants/content';
 
+const defaultAccent: Record<TemplateId, string> = {
+  mehedi: '#174A92', ats: '#173B57', sidebar: '#5689A4',
+  international: '#0E4C77', profile: '#16439B', structured: '#81878E',
+  navy: '#0D3156', timeline: '#154989', executive: '#D69B33',
+};
+
 const supportedBackupTemplateIds = [
-  'classic', 'modern', 'minimal', 'europass', 'ats', 'mehedi',
+  'classic', 'modern', 'minimal', 'europass', 'ats', 'mehedi', 'sidebar',
+  'international', 'profile', 'structured', 'navy', 'timeline', 'executive',
 ];
 const sectionTypes: SectionType[] = [
   'summary',
@@ -73,6 +80,10 @@ function readBackup(value: unknown): Backup {
       (personal.photoUri !== undefined && !isString(personal.photoUri)) ||
       (personal.github !== undefined && !isString(personal.github)) ||
       (personal.portfolio !== undefined && !isString(personal.portfolio)) ||
+      (personal.gender !== undefined && !isString(personal.gender)) ||
+      (personal.dateOfBirth !== undefined && !isString(personal.dateOfBirth)) ||
+      (personal.interests !== undefined && !isString(personal.interests)) ||
+      (personal.nationality !== undefined && !isString(personal.nationality)) ||
       !isString(r.summary) ||
       !isString(r.accent) ||
       !isFiniteNumber(r.fontScale) ||
@@ -153,9 +164,13 @@ export const resumeRepository = {
         website: '',
         github: '',
         portfolio: '',
+        gender: '',
+        dateOfBirth: '',
+        interests: '',
+        nationality: '',
       },
       summary: '',
-      accent: templateId === 'ats' ? '#173B57' : '#174A92',
+      accent: defaultAccent[templateId],
       fontScale: 1,
       paperSize: 'A4',
       createdAt: now,

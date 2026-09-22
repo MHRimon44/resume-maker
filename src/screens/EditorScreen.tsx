@@ -244,6 +244,16 @@ export function EditorScreen({
                     patch({ personal: { ...r.personal, portfolio } })
                   }
                 />
+                <Field label="Nationality (optional)" value={r.personal.nationality ?? ''}
+                  onChangeText={nationality => patch({ personal: { ...r.personal, nationality } })} />
+                <>
+                  <Field label="Gender (optional)" value={r.personal.gender ?? ''}
+                    onChangeText={gender => patch({ personal: { ...r.personal, gender } })} />
+                  <Field label="Date of birth (optional)" value={r.personal.dateOfBirth ?? ''}
+                    onChangeText={dateOfBirth => patch({ personal: { ...r.personal, dateOfBirth } })} />
+                  <Field label="Interests (optional)" value={r.personal.interests ?? ''}
+                    onChangeText={interests => patch({ personal: { ...r.personal, interests } })} />
+                </>
                 <Text style={[s.smallTitle, { color: c.ink }]}>Profile photo (optional)</Text>
                 {!!r.personal.photoUri && (
                   <Image source={{ uri: r.personal.photoUri }} style={s.photoPreview} />

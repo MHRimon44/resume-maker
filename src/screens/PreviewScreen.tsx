@@ -9,6 +9,9 @@ import { exportPdf } from '../services/exportService';
 import { ResumeBundle, RootStackParamList } from '../types';
 import { ReferenceResumePreview } from './ReferenceResumePreview';
 import { AtsResumePreview } from './AtsResumePreview';
+import { SidebarResumePreview } from './SidebarResumePreview';
+import { GlobalResumePreview } from './GlobalResumePreview';
+import { templates } from '../constants/content';
 import { useAppColors } from '../theme';
 
 export function PreviewScreen({ route, navigation }: NativeStackScreenProps<RootStackParamList, 'Preview'>) {
@@ -29,7 +32,7 @@ export function PreviewScreen({ route, navigation }: NativeStackScreenProps<Root
     <SafeAreaView style={[styles.page, { backgroundColor: c.canvas }]}>
       <ScreenHeader
         title="Resume preview"
-        subtitle={`${bundle.resume.paperSize} · ${bundle.resume.templateId === 'ats' ? 'ATS' : 'Navy Badge Resume'}`}
+        subtitle={`${bundle.resume.paperSize} · ${templates.find(t => t.id === bundle.resume.templateId)?.name ?? 'CV'}`}
         onBack={navigation.goBack}
         right={<Button label={busy ? 'Exporting…' : '↓ PDF'} disabled={busy} onPress={async () => {
           try {
@@ -43,8 +46,10 @@ export function PreviewScreen({ route, navigation }: NativeStackScreenProps<Root
         }} />}
       />
       <ScrollView style={{ backgroundColor: c.overlay }} contentContainerStyle={styles.canvas}>
-        <View style={styles.paper}>{bundle.resume.templateId === 'ats'
-          ? <AtsResumePreview bundle={bundle} />
+        <View style={styles.paper}>{bundle.resume.templateId === 'sidebar'
+          ? <SidebarResumePreview bundle={bundle} />
+          : bundle.resume.templateId === 'ats' ? <AtsResumePreview bundle={bundle} />
+          : bundle.resume.templateId !== 'mehedi' ? <GlobalResumePreview bundle={bundle} />
           : <ReferenceResumePreview bundle={bundle} />}</View>
       </ScrollView>
     </SafeAreaView>
