@@ -15,13 +15,11 @@ import { templates } from '../constants/content';
 import { resumeRepository } from '../repositories/resumeRepository';
 import { RootStackParamList, TemplateId } from '../types';
 import { colors, space, useAppColors } from '../theme';
+import { chooseTemplateForEditor } from '../store/templateSelection';
 
 const accents: Record<TemplateId, string> = {
-  modern: '#176B67',
-  classic: '#233B53',
-  minimal: '#A7654F',
-  europass: '#174A74',
-  ats: '#242D33',
+  mehedi: '#174A92',
+  ats: '#173B57',
 };
 
 export function TemplatesScreen({
@@ -35,8 +33,7 @@ export function TemplatesScreen({
     setBusy(true);
     try {
       if (route.params?.resumeId) {
-        const bundle = await resumeRepository.bundle(route.params.resumeId);
-        await resumeRepository.save({ ...bundle.resume, templateId: id });
+        chooseTemplateForEditor(route.params.resumeId, id);
         navigation.goBack();
       } else {
         const resumeId = await resumeRepository.create(id);
@@ -57,13 +54,13 @@ export function TemplatesScreen({
       />
       <View style={s.head}>
         <Text style={[s.kicker, { color: c.primary }]}>
-          FIVE PROFESSIONAL STYLES
+          TWO RESUME TEMPLATES
         </Text>
         <Text style={[s.title, { color: c.ink }]}>
-          A look that fits your next move.
+          Your resume template.
         </Text>
         <Text style={[s.sub, { color: c.muted }]}>
-          Switch styles later without losing any content.
+          Choose the look that fits your resume.
         </Text>
       </View>
       <FlatList
@@ -86,18 +83,21 @@ export function TemplatesScreen({
                   s.paperName,
                   {
                     backgroundColor: accents[item.id],
-                    width: item.id === 'ats' ? '48%' : '65%',
+                    width: item.id === 'ats' ? '70%' : '65%',
+                    alignSelf: item.id === 'ats' ? 'center' : 'auto',
                   },
                 ]}
               />
               <View style={s.paperContact} />
               <View
-                style={[s.paperHeading, { backgroundColor: accents[item.id] }]}
+                style={[s.paperHeading, { backgroundColor: accents[item.id],
+                  height: item.id === 'ats' ? 1 : 4, width: item.id === 'ats' ? '100%' : '42%' }]}
               />
               <View style={s.paperLine} />
               <View style={[s.paperLine, s.short]} />
               <View
-                style={[s.paperHeading, { backgroundColor: accents[item.id] }]}
+                style={[s.paperHeading, { backgroundColor: accents[item.id],
+                  height: item.id === 'ats' ? 1 : 4, width: item.id === 'ats' ? '100%' : '42%' }]}
               />
               <View style={s.paperLine} />
               <View style={s.paperLine} />

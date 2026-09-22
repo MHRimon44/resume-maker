@@ -1,4 +1,4 @@
-export type TemplateId = 'classic' | 'modern' | 'minimal' | 'europass' | 'ats';
+export type TemplateId = 'mehedi' | 'ats';
 export type PaperSize = 'A4' | 'Letter';
 export type SectionType =
   | 'summary'
@@ -8,6 +8,8 @@ export type SectionType =
   | 'projects'
   | 'certifications'
   | 'languages'
+  | 'leadership'
+  | 'awards'
   | 'references';
 export type Personal = {
   fullName: string;
@@ -16,6 +18,8 @@ export type Personal = {
   phone: string;
   location: string;
   website: string;
+  github?: string;
+  portfolio?: string;
   photoUri?: string;
 };
 export type Resume = {
@@ -58,6 +62,6 @@ export type RootStackParamList = {
   Home: undefined;
   Templates: { resumeId?: string } | undefined;
   Editor: { resumeId: string };
-  Preview: { resumeId: string };
+  Preview: { resumeId: string; draft?: ResumeBundle };
   Settings: undefined;
 };

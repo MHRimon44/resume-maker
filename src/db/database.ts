@@ -9,6 +9,12 @@ const migrations = [
   CREATE INDEX IF NOT EXISTS idx_entries_resume_type ON entries(resumeId,type,sortOrder);
   CREATE INDEX IF NOT EXISTS idx_sections_resume ON sections(resumeId,sortOrder);
   CREATE INDEX IF NOT EXISTS idx_resumes_updated ON resumes(updatedAt DESC);`,
+  `UPDATE sections SET sortOrder=sortOrder+2 WHERE type='references';
+  INSERT INTO sections(id,resumeId,type,visible,sortOrder)
+    SELECT lower(hex(randomblob(16))), id, 'leadership', 1, 7 FROM resumes;
+  INSERT INTO sections(id,resumeId,type,visible,sortOrder)
+    SELECT lower(hex(randomblob(16))), id, 'awards', 1, 8 FROM resumes;`,
+  `UPDATE resumes SET templateId='mehedi' WHERE templateId<>'mehedi';`,
 ];
 export async function db() {
   if (instance) return instance;

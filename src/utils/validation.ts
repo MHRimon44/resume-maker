@@ -1,12 +1,11 @@
 import * as yup from 'yup';
 export const resumeSchema = yup.object({
   title: yup.string().trim().required('Resume title is required').max(60),
-  fullName: yup.string().trim().required('Full name is required').max(80),
+  fullName: yup.string().trim().max(80),
   email: yup
     .string()
     .trim()
-    .email('Enter a valid email')
-    .required('Email is required'),
+    .email('Enter a valid email'),
   phone: yup.string().trim().max(30),
   headline: yup.string().trim().max(100),
   location: yup.string().trim().max(100),

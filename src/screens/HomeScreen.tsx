@@ -102,8 +102,7 @@ export function HomeScreen({ navigation }: P) {
                     style={[
                       s.preview,
                       {
-                        borderTopColor:
-                          item.templateId === 'ats' ? colors.ink : item.accent,
+                        borderTopColor: item.accent,
                       },
                     ]}
                   >

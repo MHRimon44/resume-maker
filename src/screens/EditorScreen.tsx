@@ -1,9 +1,11 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   Alert,
+  Image,
   Modal,
   Pressable,
   ScrollView,
+  StatusBar,
   StyleSheet,
   Switch,
   Text,
@@ -17,18 +19,28 @@ import {
   Card,
   Chip,
   Field,
-  IconButton,
   ScreenHeader,
 } from '../components/ui';
 import {
   bulletExamples,
   sectionLabels,
   summaryExamples,
+  templates,
 } from '../constants/content';
 import { resumeRepository } from '../repositories/resumeRepository';
 import { Entry, ResumeBundle, RootStackParamList, SectionType } from '../types';
 import { parseErrors, resumeSchema } from '../utils/validation';
 import { colors, space, useAppColors } from '../theme';
+import { useSettingsStore } from '../store/settingsStore';
+import { makeId } from '../utils/id';
+import { chooseResumePhoto } from '../services/photoService';
+import { takeTemplateForEditor } from '../store/templateSelection';
+import { ColorPicker } from '../components/ColorPicker';
+import {
+  entryFields,
+  parseEntryExtras,
+  serializeEntryExtras,
+} from '../utils/entryFields';
 export function EditorScreen({
   navigation,
   route,
@@ -37,16 +49,28 @@ export function EditorScreen({
   const [data, setData] = useState<ResumeBundle>(),
     [tab, setTab] = useState<SectionType | 'basics' | 'sections'>('basics'),
     [entry, setEntry] = useState<Entry>(),
+    [saving, setSaving] = useState(false),
     [errors, setErrors] = useState<Record<string, string>>({});
   const load = useCallback(
     async () => setData(await resumeRepository.bundle(route.params.resumeId)),
     [route.params.resumeId],
   );
-  useFocusEffect(
-    useCallback(() => {
-      load();
-    }, [load]),
-  );
+  useEffect(() => {
+    load();
+  }, [load]);
+  useFocusEffect(useCallback(() => {
+    const templateId = takeTemplateForEditor(route.params.resumeId);
+    if (templateId) {
+      setData(current => current && ({
+        ...current,
+        resume: {
+          ...current.resume,
+          templateId,
+          accent: current.resume.accent,
+        },
+      }));
+    }
+  }, [route.params.resumeId]));
   if (!data) return <View />;
   const r = data.resume;
   const patch = (x: Partial<typeof r>) =>
@@ -64,18 +88,26 @@ export function EditorScreen({
     });
   };
   const save = async () => {
+    if (saving) return;
     try {
       await resumeSchema.validate(
         { title: r.title, ...r.personal, summary: r.summary },
         { abortEarly: false },
       );
       setErrors({});
-      await resumeRepository.save(r);
-      await resumeRepository.setSections(data.sections);
+      setSaving(true);
+      await resumeRepository.saveBundle(data);
       Alert.alert('Saved', 'Your changes are stored on this device.');
     } catch (e) {
-      setErrors(parseErrors(e));
-      setTab('basics');
+      const validationErrors = parseErrors(e);
+      if (Object.keys(validationErrors).length) {
+        setErrors(validationErrors);
+        setTab('basics');
+      } else {
+        Alert.alert('Could not save', e instanceof Error ? e.message : 'Please try again.');
+      }
+    } finally {
+      setSaving(false);
     }
   };
   const section =
@@ -93,22 +125,16 @@ export function EditorScreen({
         subtitle={r.title}
         onBack={navigation.goBack}
         right={
-          <View style={s.topActions}>
-            <IconButton
-              icon="↗"
-              accessibilityLabel="Preview resume"
-              onPress={async () => {
-                await resumeRepository.save(r);
-                await resumeRepository.setSections(data.sections);
-                navigation.navigate('Preview', { resumeId: r.id });
-              }}
-            />
-            <Button label="✓ Save" onPress={save} />
-          </View>
+          <Button
+            label="Preview ↗"
+            kind="ghost"
+            onPress={() => navigation.navigate('Preview', { resumeId: r.id, draft: data })}
+          />
         }
       />
       <ScrollView
         horizontal
+        style={s.tabBar}
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={s.tabs}
       >
@@ -134,6 +160,7 @@ export function EditorScreen({
         ))}
       </ScrollView>
       <ScrollView
+        key={tab}
         contentContainerStyle={s.content}
         keyboardShouldPersistTaps="handled"
       >
@@ -194,13 +221,57 @@ export function EditorScreen({
                   }
                 />
                 <Field
-                  label="Website / LinkedIn"
+                  label="LinkedIn / website"
                   autoCapitalize="none"
                   value={r.personal.website}
                   onChangeText={website =>
                     patch({ personal: { ...r.personal, website } })
                   }
                 />
+                <Field
+                  label="GitHub (optional)"
+                  autoCapitalize="none"
+                  value={r.personal.github ?? ''}
+                  onChangeText={github =>
+                    patch({ personal: { ...r.personal, github } })
+                  }
+                />
+                <Field
+                  label="Portfolio (optional)"
+                  autoCapitalize="none"
+                  value={r.personal.portfolio ?? ''}
+                  onChangeText={portfolio =>
+                    patch({ personal: { ...r.personal, portfolio } })
+                  }
+                />
+                <Text style={[s.smallTitle, { color: c.ink }]}>Profile photo (optional)</Text>
+                {!!r.personal.photoUri && (
+                  <Image source={{ uri: r.personal.photoUri }} style={s.photoPreview} />
+                )}
+                <Button
+                  label={r.personal.photoUri ? 'Change photo' : 'Upload photo'}
+                  kind="ghost"
+                  onPress={async () => {
+                    try {
+                      const photoUri = await chooseResumePhoto();
+                      if (photoUri) patch({ personal: { ...r.personal, photoUri } });
+                    } catch (error) {
+                      Alert.alert(
+                        'Could not upload photo',
+                        error instanceof Error ? error.message : 'Please try again.',
+                      );
+                    }
+                  }}
+                />
+                {!!r.personal.photoUri && (
+                  <Button
+                    label="Remove photo"
+                    kind="ghost"
+                    onPress={() => patch({
+                      personal: { ...r.personal, photoUri: undefined },
+                    })}
+                  />
+                )}
               </View>
             </Card>
           </>
@@ -211,6 +282,20 @@ export function EditorScreen({
               Set the page, then arrange what appears in your document.
             </Text>
             <Card>
+              <Text style={[s.smallTitle, { color: c.ink }]}>Template</Text>
+              <View style={s.choiceRow}>
+                {templates.map(item => (
+                  <Chip
+                    key={item.id}
+                    label={item.name}
+                    selected={r.templateId === item.id}
+                    onPress={() => patch({
+                      templateId: item.id,
+                      accent: r.accent,
+                    })}
+                  />
+                ))}
+              </View>
               <Text style={[s.smallTitle, { color: c.ink }]}>Paper size</Text>
               <View style={s.choiceRow}>
                 {(['A4', 'Letter'] as const).map(x => (
@@ -234,6 +319,7 @@ export function EditorScreen({
                 ))}
               </View>
               <Text style={[s.smallTitle, { color: c.ink }]}>Accent</Text>
+              <ColorPicker value={r.accent} onChange={accent => patch({ accent })} />
               <View style={s.choiceRow}>
                 {['#5B5CE2', '#173B57', '#23856D', '#D16B47'].map(x => (
                   <Pressable
@@ -317,7 +403,7 @@ export function EditorScreen({
               {summaryExamples.map(x => (
                 <Pressable
                   key={x}
-                  style={s.example}
+                  style={[s.example, { backgroundColor: c.primarySoft }]}
                   onPress={() => patch({ summary: x })}
                 >
                   <Text style={[s.exampleText, { color: c.muted }]}>{x}</Text>
@@ -363,9 +449,13 @@ export function EditorScreen({
               ))}
               <Button
                 label={`＋ Add ${sectionLabels[tab]}`}
-                onPress={async () =>
-                  setEntry(await resumeRepository.addEntry(r.id, tab))
-                }
+                onPress={() => setEntry({
+                  id: makeId(),
+                  resumeId: r.id,
+                  type: tab,
+                  title: '', subtitle: '', startDate: '', endDate: '',
+                  details: '', meta: '', sortOrder: Date.now(),
+                })}
               />
             </View>
           </>
@@ -373,9 +463,22 @@ export function EditorScreen({
       </ScrollView>
       <EntryModal
         value={entry}
-        onClose={() => {
+        onClose={() => setEntry(undefined)}
+        onDone={saved => {
+          setData(current => current && ({
+            ...current,
+            entries: current.entries.some(item => item.id === saved.id)
+              ? current.entries.map(item => item.id === saved.id ? saved : item)
+              : [...current.entries, saved],
+          }));
           setEntry(undefined);
-          load();
+        }}
+        onDelete={id => {
+          setData(current => current && ({
+            ...current,
+            entries: current.entries.filter(item => item.id !== id),
+          }));
+          setEntry(undefined);
         }}
       />
       <View
@@ -386,7 +489,7 @@ export function EditorScreen({
           kind="ghost"
           onPress={() => navigation.navigate('Templates', { resumeId: r.id })}
         />
-        <Button label="✓ Save changes" onPress={save} />
+        <Button label={saving ? 'Saving…' : '✓ Save'} disabled={saving} onPress={save} />
       </View>
     </SafeAreaView>
   );
@@ -394,64 +497,110 @@ export function EditorScreen({
 function EntryModal({
   value,
   onClose,
+  onDone,
+  onDelete,
 }: {
   value?: Entry;
   onClose: () => void;
+  onDone: (entry: Entry) => void;
+  onDelete: (id: string) => void;
 }) {
   const c = useAppColors();
+  const darkMode = useSettingsStore(state => state.darkMode);
   const [draft, setDraft] = useState(value);
   React.useEffect(() => setDraft(value), [value]);
   if (!draft) return null;
   const p = (x: Partial<Entry>) => setDraft({ ...draft, ...x });
+  const fields = draft.type === 'summary' ? undefined : entryFields[draft.type];
+  const extras = parseEntryExtras(draft.meta);
+  const patchExtra = (key: keyof typeof extras, value: string) =>
+    p({ meta: serializeEntryExtras({ ...extras, [key]: value }) });
   return (
     <Modal animationType="slide" presentationStyle="pageSheet">
-      <SafeAreaView style={s.modal}>
-        <ScrollView contentContainerStyle={s.content}>
+      <SafeAreaView style={[s.modal, { backgroundColor: c.canvas }]}>
+        <StatusBar
+          barStyle={darkMode ? 'light-content' : 'dark-content'}
+          backgroundColor={c.canvas}
+        />
+        <ScrollView
+          style={{ backgroundColor: c.canvas }}
+          contentContainerStyle={s.content}
+          keyboardShouldPersistTaps="handled"
+        >
           <Text style={[s.heading, { color: c.ink }]}>
             Edit {sectionLabels[draft.type]}
           </Text>
           <View style={s.form}>
             <Field
-              label="Title / name"
+              label={fields?.title ?? 'Title'}
               value={draft.title}
               onChangeText={title => p({ title })}
             />
-            <Field
-              label="Organization / role / level"
-              value={draft.subtitle}
-              onChangeText={subtitle => p({ subtitle })}
-            />
-            <View style={s.dateRow}>
-              <View style={{ flex: 1 }}>
-                <Field
-                  label="Start"
-                  placeholder="2023-01"
-                  value={draft.startDate}
-                  onChangeText={startDate => p({ startDate })}
-                />
+            {!!fields?.subtitle && (
+              <Field
+                label={fields.subtitle}
+                value={draft.subtitle}
+                onChangeText={subtitle => p({ subtitle })}
+              />
+            )}
+            {fields?.extras?.map(field => (
+              <Field
+                key={field.key}
+                label={field.label}
+                placeholder={field.placeholder}
+                value={extras[field.key] ?? ''}
+                autoCapitalize={
+                  field.key === 'email' || field.key === 'url'
+                    ? 'none'
+                    : 'sentences'
+                }
+                keyboardType={
+                  field.key === 'email'
+                    ? 'email-address'
+                    : field.key === 'phone'
+                      ? 'phone-pad'
+                      : 'default'
+                }
+                onChangeText={value => patchExtra(field.key, value)}
+              />
+            ))}
+            {!!fields?.startDate && (
+              <View style={s.dateRow}>
+                <View style={s.dateField}>
+                  <Field
+                    label={fields.startDate}
+                    placeholder="2023-01"
+                    value={draft.startDate}
+                    onChangeText={startDate => p({ startDate })}
+                  />
+                </View>
+                <View style={s.dateField}>
+                  <Field
+                    label={fields.endDate ?? 'End date'}
+                    placeholder="Present / 2024-12"
+                    value={draft.endDate}
+                    onChangeText={endDate => p({ endDate })}
+                  />
+                </View>
               </View>
-              <View style={{ flex: 1 }}>
-                <Field
-                  label="End"
-                  placeholder="Present"
-                  value={draft.endDate}
-                  onChangeText={endDate => p({ endDate })}
-                />
-              </View>
-            </View>
-            <Field
-              label="Details / achievements"
-              multiline
-              value={draft.details}
-              onChangeText={details => p({ details })}
-            />
-            <Text style={[s.smallTitle, { color: c.ink }]}>
-              Add a starter bullet
-            </Text>
-            {bulletExamples.map(x => (
+            )}
+            {!!fields?.details && (
+              <Field
+                label={fields.details}
+                multiline={fields.detailsMultiline}
+                value={draft.details}
+                onChangeText={details => p({ details })}
+              />
+            )}
+            {draft.type === 'experience' && (
+              <Text style={[s.smallTitle, { color: c.ink }]}>
+                Add a starter bullet
+              </Text>
+            )}
+            {draft.type === 'experience' && bulletExamples.map(x => (
               <Pressable
                 key={x}
-                style={s.example}
+                style={[s.example, { backgroundColor: c.primarySoft }]}
                 onPress={() =>
                   p({
                     details: [draft.details, x].filter(Boolean).join('\n• '),
@@ -461,25 +610,21 @@ function EntryModal({
                 <Text style={[s.exampleText, { color: c.muted }]}>＋ {x}</Text>
               </Pressable>
             ))}
-            <Field
-              label="Extra (URL, language level, credential)"
-              value={draft.meta}
-              onChangeText={meta => p({ meta })}
-            />
+            {!!extras.legacy && (
+              <Field
+                label="Additional information from an earlier entry"
+                value={extras.legacy}
+                onChangeText={legacy => patchExtra('legacy', legacy)}
+              />
+            )}
             <Button
-              label="✓ Save entry"
-              onPress={async () => {
-                await resumeRepository.saveEntry(draft);
-                onClose();
-              }}
+              label="✓ Done"
+              onPress={() => onDone(draft)}
             />
             <Button
               label="⌫ Delete entry"
               kind="danger"
-              onPress={async () => {
-                await resumeRepository.deleteEntry(draft.id);
-                onClose();
-              }}
+              onPress={() => onDelete(draft.id)}
             />
             <Button label="× Cancel" kind="ghost" onPress={onClose} />
           </View>
@@ -499,9 +644,9 @@ const s = StyleSheet.create({
     justifyContent: 'space-between',
   },
   back: { color: colors.primary, fontWeight: '800', fontSize: 15 },
-  topActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   preview: { fontWeight: '800', color: colors.primary },
-  tabs: { padding: 9, gap: 7, maxHeight: 52, marginBottom: 4 },
+  tabBar: { flexGrow: 0, height: 60 },
+  tabs: { padding: 9, gap: 7, alignItems: 'center' },
   content: { padding: 14, paddingBottom: 110, gap: 12 },
   heading: {
     fontSize: 23,
@@ -564,4 +709,6 @@ const s = StyleSheet.create({
   },
   modal: { flex: 1, backgroundColor: colors.canvas },
   dateRow: { flexDirection: 'row', gap: 10 },
+  dateField: { flex: 1, minWidth: 0 },
+  photoPreview: { width: 84, height: 84, borderRadius: 42, alignSelf: 'center' },
 });

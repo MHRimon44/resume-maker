@@ -6,33 +6,15 @@ export const templates: {
   free: boolean;
 }[] = [
   {
-    id: 'modern',
-    name: 'Modern Slate',
-    description: 'Bold header and crisp two-column feel',
-    free: true,
-  },
-  {
-    id: 'classic',
-    name: 'Executive Classic',
-    description: 'Traditional, ATS-friendly structure',
-    free: true,
-  },
-  {
-    id: 'minimal',
-    name: 'Quiet Minimal',
-    description: 'Whitespace-led editorial layout',
-    free: true,
-  },
-  {
-    id: 'europass',
-    name: 'European CV',
-    description: 'Europass-inspired structure for experience, education and skills',
+    id: 'mehedi',
+    name: 'Navy Badge Resume',
+    description: 'Compact navy headings and two-column header, based on your PDF',
     free: true,
   },
   {
     id: 'ats',
-    name: 'ATS Simple',
-    description: 'Single-column layout with standard headings and readable text',
+    name: 'ATS',
+    description: 'Single-column serif layout with centered contact details, based on your new PDF',
     free: true,
   },
 ];
@@ -44,6 +26,8 @@ export const sectionLabels: Record<SectionType, string> = {
   projects: 'Projects',
   certifications: 'Certifications',
   languages: 'Languages',
+  leadership: 'Leadership Activities',
+  awards: 'Awards',
   references: 'References',
 };
 export const sectionOrder = Object.keys(sectionLabels) as SectionType[];
