@@ -490,17 +490,13 @@ export function EditorScreen({
               <Text style={[s.help, { color: c.muted }]}>
                 Choose colors for each part of the document.
               </Text>
-              <Text style={[s.smallTitle, { color: c.ink }]}>
-                Accent / divider
-              </Text>
               <ColorPicker
+                label="Accent / divider"
                 value={r.accent}
                 onChange={accent => patch({ accent })}
               />
               {colorRoles.map(({ key, label }) => (
-                <View key={key} style={{ marginTop: 10 }}>
-                  <Text style={[s.smallTitle, { color: c.ink }]}>{label}</Text>
-                  <ColorPicker
+                  <ColorPicker key={key} label={label}
                     value={
                       r.style?.colors?.[key] ??
                       (key === 'sidebar'
@@ -526,7 +522,6 @@ export function EditorScreen({
                       })
                     }
                   />
-                </View>
               ))}
             </Card>
             <NestableDraggableFlatList

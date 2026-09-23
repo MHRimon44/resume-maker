@@ -10,6 +10,7 @@ import {
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import LinearGradient from 'react-native-linear-gradient';
 import {
   Button,
   AppIcon,
@@ -38,7 +39,7 @@ export function HomeScreen({ navigation }: P) {
     }, [load]),
   );
   return (
-    <SafeAreaView style={[s.page, { backgroundColor: c.primarySoft }]}>
+    <SafeAreaView style={[s.page, { backgroundColor: c.canvas }]}> 
       <ScreenHeader
         title="Resume Studio"
         subtitle="Private, offline resume builder"
@@ -52,7 +53,11 @@ export function HomeScreen({ navigation }: P) {
           />
         }
       />
-      <View style={[s.hero, { backgroundColor: c.primarySoft }]}>
+      <LinearGradient
+        colors={[c.primarySoft, c.primarySoft, c.canvas]}
+        locations={[0, 0.62, 1]}
+        style={s.hero}
+      >
         <View>
           <Text style={[s.eyebrow, { color: c.primary }]}>
             RESUME STUDIO / OFFLINE
@@ -68,7 +73,7 @@ export function HomeScreen({ navigation }: P) {
           label="Create a resume"
           onPress={() => navigation.navigate('Templates')}
         />
-      </View>
+      </LinearGradient>
       {!loading && !items.length ? (
         <View style={[s.emptyArea, { backgroundColor: c.canvas }]}>
           <Empty
@@ -188,7 +193,6 @@ const s = StyleSheet.create({
     paddingTop: 26,
     paddingBottom: 24,
     gap: 18,
-    backgroundColor: '#E3F2EE',
     borderBottomLeftRadius: 26,
     borderBottomRightRadius: 26,
   },

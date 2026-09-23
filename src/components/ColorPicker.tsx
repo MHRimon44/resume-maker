@@ -37,7 +37,9 @@ function Channel({ label, value, color, onChange }: {
   </View>;
 }
 
-export function ColorPicker({ value, onChange, compact = false }: { value: string; onChange: (hex: string) => void; compact?: boolean }) {
+export function ColorPicker({ value, onChange, compact = false, label }: {
+  value: string; onChange: (hex: string) => void; compact?: boolean; label?: string;
+}) {
   const c = useAppColors();
   const [open, setOpen] = useState(false);
   const [hex, setHex] = useState(value);
@@ -57,9 +59,11 @@ export function ColorPicker({ value, onChange, compact = false }: { value: strin
   return <>
     <Pressable accessibilityRole="button" accessibilityLabel={`Choose color ${value}`}
       onPress={() => setOpen(true)} style={[styles.trigger, compact && styles.compactTrigger,
+        !!label && !compact && styles.labeledTrigger,
         { borderColor: c.line, backgroundColor: c.surface }]}> 
+      {!!label && !compact && <Text numberOfLines={1} style={[styles.triggerLabel, { color: c.ink }]}>{label}</Text>}
       <View style={[styles.sample, { backgroundColor: valid(value) ? value : '#173B57' }]} />
-      {!compact && <Text style={{ color: c.ink, fontWeight: '700' }}>{value.toUpperCase()}  ·  Choose any color</Text>}
+      {!compact && <Text style={[styles.hex, { color: c.muted }]}>{value.toUpperCase()}</Text>}
     </Pressable>
     <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
       <View style={[styles.scrim, { backgroundColor: c.overlay + 'EE' }]}>
@@ -92,6 +96,9 @@ export function ColorPicker({ value, onChange, compact = false }: { value: strin
 const styles = StyleSheet.create({
   trigger: { borderWidth: 1, borderRadius: 12, padding: 10, flexDirection: 'row', alignItems: 'center', gap: 12 },
   compactTrigger: { padding: 4, borderRadius: 9 },
+  labeledTrigger: { marginTop: 10 },
+  triggerLabel: { flex: 1, minWidth: 0, fontWeight: '800', fontSize: 13 },
+  hex: { fontWeight: '700', fontSize: 12 },
   sample: { width: 30, height: 30, borderRadius: 8 },
   scrim: { flex: 1, justifyContent: 'flex-end' },
   sheet: { padding: 22, paddingBottom: 40, borderTopLeftRadius: 20, borderTopRightRadius: 20 },
