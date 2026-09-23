@@ -7,6 +7,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import DeviceInfo from 'react-native-device-info';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button, Card, ScreenHeader } from '../components/ui';
@@ -16,7 +17,7 @@ import { backupJson, pickBackupJson } from '../services/exportService';
 import { RootStackParamList } from '../types';
 import { useAppColors } from '../theme';
 
-export function SettingsScreen({
+export default function SettingsScreen({
   navigation,
 }: NativeStackScreenProps<RootStackParamList, 'Settings'>) {
   const { darkMode, toggle, hydrate } = useSettingsStore();
@@ -44,7 +45,9 @@ export function SettingsScreen({
                 const count = await resumeRepository.restoreAll(backup);
                 Alert.alert(
                   'Backup restored',
-                  `${count} ${count === 1 ? 'resume' : 'resumes'} restored successfully.`,
+                  `${count} ${
+                    count === 1 ? 'resume' : 'resumes'
+                  } restored successfully.`,
                 );
               } catch (error) {
                 Alert.alert(
@@ -147,7 +150,7 @@ export function SettingsScreen({
           />
         </Card>
         <Text style={[s.footer, { color: c.muted }]}>
-          Resume Studio 1.0 · Offline-first
+          Resume Studio · Version {DeviceInfo.getVersion()}
         </Text>
       </ScrollView>
     </SafeAreaView>

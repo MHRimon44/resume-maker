@@ -11,7 +11,7 @@ import { HomeScreen } from '../screens/HomeScreen';
 import { TemplatesScreen } from '../screens/TemplatesScreen';
 import { EditorScreen } from '../screens/EditorScreen';
 import { PreviewScreen } from '../screens/PreviewScreen';
-import { SettingsScreen } from '../screens/SettingsScreen';
+import SettingsScreen from '../screens/SettingsScreen';
 import { CustomSectionScreen } from '../screens/CustomSectionScreen';
 import { useSettingsStore } from '../store/settingsStore';
 import { darkColors, lightColors } from '../theme';
