@@ -14,7 +14,7 @@ const migrations = [
     SELECT lower(hex(randomblob(16))), id, 'leadership', 1, 7 FROM resumes;
   INSERT INTO sections(id,resumeId,type,visible,sortOrder)
     SELECT lower(hex(randomblob(16))), id, 'awards', 1, 8 FROM resumes;`,
-  `UPDATE resumes SET templateId='mehedi' WHERE templateId<>'mehedi';`,
+  `UPDATE resumes SET templateId='custom' WHERE templateId<>'custom';`,
   `ALTER TABLE sections ADD COLUMN title TEXT NOT NULL DEFAULT '';
    ALTER TABLE sections ADD COLUMN color TEXT NOT NULL DEFAULT '';
    ALTER TABLE entries ADD COLUMN sectionId TEXT NOT NULL DEFAULT '';`,
@@ -42,10 +42,10 @@ export async function db() {
           .map(x => x.trim())
           .filter(Boolean))
           tx.executeSql(s);
-        tx.executeSql(
-          'INSERT INTO migrations(version,appliedAt) VALUES(?,?)',
-          [i + 1, new Date().toISOString()],
-        );
+        tx.executeSql('INSERT INTO migrations(version,appliedAt) VALUES(?,?)', [
+          i + 1,
+          new Date().toISOString(),
+        ]);
       });
     }
   }

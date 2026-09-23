@@ -1,6 +1,13 @@
-export type TemplateId = 'mehedi' | 'ats' | 'sidebar'
-  | 'international' | 'profile' | 'structured'
-  | 'navy' | 'timeline' | 'executive';
+export type TemplateId =
+  | 'custom'
+  | 'ats'
+  | 'sidebar'
+  | 'international'
+  | 'profile'
+  | 'structured'
+  | 'navy'
+  | 'timeline'
+  | 'executive';
 export type PaperSize = 'A4' | 'Letter';
 export type SectionType =
   | 'summary'
@@ -15,12 +22,33 @@ export type SectionType =
   | 'references'
   | 'custom';
 export type FontFamily = 'sans' | 'serif' | 'mono';
-export type ColorRole = 'page' | 'header' | 'sidebar' | 'name' | 'headline' |
-  'contact' | 'sectionHeading' | 'entryTitle' | 'meta' | 'body' |
-  'divider' | 'photoBorder' | 'sidebarHeading' | 'sectionBackground';
-export type CustomFieldKind = 'text' | 'multiline' | 'date' | 'url' | 'email' | 'phone';
+export type ColorRole =
+  | 'page'
+  | 'header'
+  | 'sidebar'
+  | 'name'
+  | 'headline'
+  | 'contact'
+  | 'sectionHeading'
+  | 'entryTitle'
+  | 'meta'
+  | 'body'
+  | 'divider'
+  | 'photoBorder'
+  | 'sidebarHeading'
+  | 'sectionBackground';
+export type CustomFieldKind =
+  | 'text'
+  | 'multiline'
+  | 'date'
+  | 'url'
+  | 'email'
+  | 'phone';
 export type CustomField = { id: string; label: string; kind: CustomFieldKind };
-export type ResumeStyle = { fontFamily?: FontFamily; colors?: Partial<Record<ColorRole, string>> };
+export type ResumeStyle = {
+  fontFamily?: FontFamily;
+  colors?: Partial<Record<ColorRole, string>>;
+};
 export type Personal = {
   fullName: string;
   headline: string;
@@ -84,5 +112,10 @@ export type RootStackParamList = {
   Editor: { resumeId: string };
   Preview: { resumeId: string; draft?: ResumeBundle };
   Settings: undefined;
-  CustomSection: { resumeId: string; sectionId?: string; title?: string; fields?: CustomField[] };
+  CustomSection: {
+    resumeId: string;
+    sectionId?: string;
+    title?: string;
+    fields?: CustomField[];
+  };
 };

@@ -11,14 +11,31 @@ import { makeId } from '../utils/id';
 import { sectionOrder } from '../constants/content';
 
 const defaultAccent: Record<TemplateId, string> = {
-  mehedi: '#174A92', ats: '#173B57', sidebar: '#5689A4',
-  international: '#0E4C77', profile: '#16439B', structured: '#81878E',
-  navy: '#0D3156', timeline: '#154989', executive: '#D69B33',
+  custom: '#174A92',
+  ats: '#173B57',
+  sidebar: '#5689A4',
+  international: '#0E4C77',
+  profile: '#16439B',
+  structured: '#81878E',
+  navy: '#0D3156',
+  timeline: '#154989',
+  executive: '#D69B33',
 };
 
 const supportedBackupTemplateIds = [
-  'classic', 'modern', 'minimal', 'europass', 'ats', 'mehedi', 'sidebar',
-  'international', 'profile', 'structured', 'navy', 'timeline', 'executive',
+  'classic',
+  'modern',
+  'minimal',
+  'europass',
+  'ats',
+  'custom',
+  'sidebar',
+  'international',
+  'profile',
+  'structured',
+  'navy',
+  'timeline',
+  'executive',
 ];
 const sectionTypes: SectionType[] = [
   'summary',
@@ -88,12 +105,33 @@ function readBackup(value: unknown): Backup {
       !isString(r.summary) ||
       !isString(r.accent) ||
       !isFiniteNumber(r.fontScale) ||
-      (r.style !== undefined && (!isObject(r.style) ||
-        (r.style.fontFamily !== undefined && !['sans', 'serif', 'mono'].includes(String(r.style.fontFamily))) ||
-        (r.style.colors !== undefined && (!isObject(r.style.colors) ||
-          Object.entries(r.style.colors).some(([key, color]) =>
-            !['page', 'header', 'sidebar', 'name', 'headline', 'contact', 'sectionHeading', 'entryTitle', 'meta', 'body', 'divider', 'photoBorder', 'sidebarHeading', 'sectionBackground'].includes(key) ||
-            typeof color !== 'string' || !/^#[0-9a-fA-F]{6}$/.test(color)))))) ||
+      (r.style !== undefined &&
+        (!isObject(r.style) ||
+          (r.style.fontFamily !== undefined &&
+            !['sans', 'serif', 'mono'].includes(String(r.style.fontFamily))) ||
+          (r.style.colors !== undefined &&
+            (!isObject(r.style.colors) ||
+              Object.entries(r.style.colors).some(
+                ([key, color]) =>
+                  ![
+                    'page',
+                    'header',
+                    'sidebar',
+                    'name',
+                    'headline',
+                    'contact',
+                    'sectionHeading',
+                    'entryTitle',
+                    'meta',
+                    'body',
+                    'divider',
+                    'photoBorder',
+                    'sidebarHeading',
+                    'sectionBackground',
+                  ].includes(key) ||
+                  typeof color !== 'string' ||
+                  !/^#[0-9a-fA-F]{6}$/.test(color),
+              ))))) ||
       (r.paperSize !== 'A4' && r.paperSize !== 'Letter') ||
       !isString(r.createdAt) ||
       !isString(r.updatedAt)
@@ -114,10 +152,13 @@ function readBackup(value: unknown): Backup {
         !['title', 'subtitle', 'startDate', 'endDate', 'details', 'meta'].every(
           key => isString(entry[key]),
         ) ||
-        !isFiniteNumber(entry.sortOrder)
-        || (entry.sectionId !== undefined && !isString(entry.sectionId))
-        || (entry.customValues !== undefined && (!isObject(entry.customValues) ||
-          Object.entries(entry.customValues).some(([key, item]) => !/^[A-Za-z0-9_-]+$/.test(key) || !isString(item))))
+        !isFiniteNumber(entry.sortOrder) ||
+        (entry.sectionId !== undefined && !isString(entry.sectionId)) ||
+        (entry.customValues !== undefined &&
+          (!isObject(entry.customValues) ||
+            Object.entries(entry.customValues).some(
+              ([key, item]) => !/^[A-Za-z0-9_-]+$/.test(key) || !isString(item),
+            )))
       ) {
         throw new Error('The backup contains an invalid resume entry.');
       }
@@ -134,22 +175,45 @@ function readBackup(value: unknown): Backup {
         !isString(section.type) ||
         !sectionTypes.includes(section.type as SectionType) ||
         typeof section.visible !== 'boolean' ||
-        !isFiniteNumber(section.sortOrder)
-        || (section.title !== undefined && !isString(section.title))
-        || (section.color !== undefined && (!isString(section.color) || (!!section.color && !/^#[0-9a-fA-F]{6}$/.test(section.color))))
-        || (section.type === 'custom' && (!isString(section.title) || !section.title.trim()))
-        || (section.fields !== undefined && (!Array.isArray(section.fields) || section.fields.some((field: any) =>
-          !isObject(field) || !isString(field.id) || !/^[A-Za-z0-9_-]+$/.test(field.id) ||
-          !isString(field.label) || !field.label.trim() || !['text','multiline','date','url','email','phone'].includes(String(field.kind)))))
+        !isFiniteNumber(section.sortOrder) ||
+        (section.title !== undefined && !isString(section.title)) ||
+        (section.color !== undefined &&
+          (!isString(section.color) ||
+            (!!section.color && !/^#[0-9a-fA-F]{6}$/.test(section.color)))) ||
+        (section.type === 'custom' &&
+          (!isString(section.title) || !section.title.trim())) ||
+        (section.fields !== undefined &&
+          (!Array.isArray(section.fields) ||
+            section.fields.some(
+              (field: any) =>
+                !isObject(field) ||
+                !isString(field.id) ||
+                !/^[A-Za-z0-9_-]+$/.test(field.id) ||
+                !isString(field.label) ||
+                !field.label.trim() ||
+                ![
+                  'text',
+                  'multiline',
+                  'date',
+                  'url',
+                  'email',
+                  'phone',
+                ].includes(String(field.kind)),
+            )))
       ) {
         throw new Error('The backup contains an invalid resume section.');
       }
       childIds.add(section.id);
     }
     for (const entry of bundle.entries) {
-      if (entry.type === 'custom' && !bundle.sections.some(
-        (section: any) => section.id === entry.sectionId && section.type === 'custom',
-      )) throw new Error('A custom entry has no matching section.');
+      if (
+        entry.type === 'custom' &&
+        !bundle.sections.some(
+          (section: any) =>
+            section.id === entry.sectionId && section.type === 'custom',
+        )
+      )
+        throw new Error('A custom entry has no matching section.');
     }
   }
   return value as Backup;
@@ -159,11 +223,21 @@ const rowResume = (x: any): Resume => ({
   personal: JSON.parse(x.personalJson),
   ...JSON.parse(x.themeJson),
 });
-const rowEntry = (x: any): Entry => ({ ...x, customValues: JSON.parse(x.customJson || '{}') });
-const rowSection = (x: any): ResumeSection => ({ ...x, visible: !!x.visible, fields: JSON.parse(x.fieldsJson || '[]') });
-const themeJson = (r: Resume) => JSON.stringify({
-  accent: r.accent, fontScale: r.fontScale, style: r.style ?? {},
+const rowEntry = (x: any): Entry => ({
+  ...x,
+  customValues: JSON.parse(x.customJson || '{}'),
 });
+const rowSection = (x: any): ResumeSection => ({
+  ...x,
+  visible: !!x.visible,
+  fields: JSON.parse(x.fieldsJson || '[]'),
+});
+const themeJson = (r: Resume) =>
+  JSON.stringify({
+    accent: r.accent,
+    fontScale: r.fontScale,
+    style: r.style ?? {},
+  });
 export const resumeRepository = {
   async list() {
     const d = await db();
@@ -174,7 +248,7 @@ export const resumeRepository = {
       rowResume(r.rows.item(i)),
     );
   },
-  async create(templateId: TemplateId = 'mehedi') {
+  async create(templateId: TemplateId = 'custom') {
     const d = await db(),
       id = makeId(),
       now = new Date().toISOString();
@@ -217,13 +291,10 @@ export const resumeRepository = {
       ]);
       const initialOrder = sectionOrder;
       for (let i = 0; i < initialOrder.length; i++)
-        tx.executeSql('INSERT INTO sections(id,resumeId,type,visible,sortOrder) VALUES(?,?,?,?,?)', [
-          makeId(),
-          id,
-          initialOrder[i],
-          1,
-          i,
-        ]);
+        tx.executeSql(
+          'INSERT INTO sections(id,resumeId,type,visible,sortOrder) VALUES(?,?,?,?,?)',
+          [makeId(), id, initialOrder[i], 1, i],
+        );
     });
     return id;
   },
@@ -246,7 +317,9 @@ export const resumeRepository = {
       entries: Array.from({ length: b[0].rows.length }, (_, i) =>
         rowEntry(b[0].rows.item(i)),
       ),
-      sections: Array.from({ length: c[0].rows.length }, (_, i) => rowSection(c[0].rows.item(i))),
+      sections: Array.from({ length: c[0].rows.length }, (_, i) =>
+        rowSection(c[0].rows.item(i)),
+      ),
     };
   },
   async save(r: Resume) {
@@ -284,26 +357,39 @@ export const resumeRepository = {
       );
       tx.executeSql('DELETE FROM entries WHERE resumeId=?', [r.id]);
       for (const e of bundle.entries) {
-        tx.executeSql('INSERT INTO entries(id,resumeId,type,title,subtitle,startDate,endDate,details,meta,sortOrder,sectionId,customJson) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)', [
-          e.id,
-          r.id,
-          e.type,
-          e.title,
-          e.subtitle,
-          e.startDate,
-          e.endDate,
-          e.details,
-          e.meta,
-          e.sortOrder,
-          e.sectionId ?? '',
-          JSON.stringify(e.customValues ?? {}),
-        ]);
+        tx.executeSql(
+          'INSERT INTO entries(id,resumeId,type,title,subtitle,startDate,endDate,details,meta,sortOrder,sectionId,customJson) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)',
+          [
+            e.id,
+            r.id,
+            e.type,
+            e.title,
+            e.subtitle,
+            e.startDate,
+            e.endDate,
+            e.details,
+            e.meta,
+            e.sortOrder,
+            e.sectionId ?? '',
+            JSON.stringify(e.customValues ?? {}),
+          ],
+        );
       }
       tx.executeSql('DELETE FROM sections WHERE resumeId=?', [r.id]);
-      for (const s of bundle.sections) tx.executeSql(
-        'INSERT INTO sections(id,resumeId,type,visible,sortOrder,title,color,fieldsJson) VALUES(?,?,?,?,?,?,?,?)',
-        [s.id, r.id, s.type, s.visible ? 1 : 0, s.sortOrder, s.title ?? '', s.color ?? '', JSON.stringify(s.fields ?? [])],
-      );
+      for (const s of bundle.sections)
+        tx.executeSql(
+          'INSERT INTO sections(id,resumeId,type,visible,sortOrder,title,color,fieldsJson) VALUES(?,?,?,?,?,?,?,?)',
+          [
+            s.id,
+            r.id,
+            s.type,
+            s.visible ? 1 : 0,
+            s.sortOrder,
+            s.title ?? '',
+            s.color ?? '',
+            JSON.stringify(s.fields ?? []),
+          ],
+        );
     });
   },
   async addEntry(resumeId: string, type: SectionType) {
@@ -322,8 +408,20 @@ export const resumeRepository = {
       };
     await d.executeSql(
       'INSERT INTO entries(id,resumeId,type,title,subtitle,startDate,endDate,details,meta,sortOrder,sectionId,customJson) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)',
-      [e.id, e.resumeId, e.type, e.title, e.subtitle, e.startDate,
-        e.endDate, e.details, e.meta, e.sortOrder, e.sectionId ?? '', JSON.stringify(e.customValues ?? {})],
+      [
+        e.id,
+        e.resumeId,
+        e.type,
+        e.title,
+        e.subtitle,
+        e.startDate,
+        e.endDate,
+        e.details,
+        e.meta,
+        e.sortOrder,
+        e.sectionId ?? '',
+        JSON.stringify(e.customValues ?? {}),
+      ],
     );
     return e;
   },
@@ -353,7 +451,14 @@ export const resumeRepository = {
       for (const s of items)
         tx.executeSql(
           'UPDATE sections SET visible=?,sortOrder=?,title=?,color=?,fieldsJson=? WHERE id=?',
-          [s.visible ? 1 : 0, s.sortOrder, s.title ?? '', s.color ?? '', JSON.stringify(s.fields ?? []), s.id],
+          [
+            s.visible ? 1 : 0,
+            s.sortOrder,
+            s.title ?? '',
+            s.color ?? '',
+            JSON.stringify(s.fields ?? []),
+            s.id,
+          ],
         );
     });
   },
@@ -366,11 +471,24 @@ export const resumeRepository = {
       copy = await this.bundle(newId);
     const sectionIds = new Map(src.sections.map(s => [s.id, makeId()]));
     await this.saveBundle({
-      resume: { ...src.resume, id: newId, title: `${src.resume.title} Copy`,
-        createdAt: copy.resume.createdAt, updatedAt: copy.resume.updatedAt },
-      sections: src.sections.map(s => ({ ...s, id: sectionIds.get(s.id)!, resumeId: newId })),
-      entries: src.entries.map(e => ({ ...e, id: makeId(), resumeId: newId,
-        sectionId: e.sectionId ? sectionIds.get(e.sectionId) : undefined })),
+      resume: {
+        ...src.resume,
+        id: newId,
+        title: `${src.resume.title} Copy`,
+        createdAt: copy.resume.createdAt,
+        updatedAt: copy.resume.updatedAt,
+      },
+      sections: src.sections.map(s => ({
+        ...s,
+        id: sectionIds.get(s.id)!,
+        resumeId: newId,
+      })),
+      entries: src.entries.map(e => ({
+        ...e,
+        id: makeId(),
+        resumeId: newId,
+        sectionId: e.sectionId ? sectionIds.get(e.sectionId) : undefined,
+      })),
     });
     return newId;
   },
@@ -392,7 +510,9 @@ export const resumeRepository = {
         tx.executeSql('INSERT INTO resumes VALUES(?,?,?,?,?,?,?,?,?)', [
           r.id,
           r.title,
-          ['classic', 'modern', 'minimal', 'europass'].includes(r.templateId) ? 'mehedi' : r.templateId,
+          ['classic', 'modern', 'minimal', 'europass'].includes(r.templateId)
+            ? 'custom'
+            : r.templateId,
           JSON.stringify(r.personal),
           r.summary,
           themeJson(r),
@@ -401,38 +521,51 @@ export const resumeRepository = {
           r.updatedAt,
         ]);
         for (const entry of bundle.entries) {
-          tx.executeSql('INSERT INTO entries(id,resumeId,type,title,subtitle,startDate,endDate,details,meta,sortOrder,sectionId,customJson) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)', [
-            entry.id,
-            entry.resumeId,
-            entry.type,
-            entry.title,
-            entry.subtitle,
-            entry.startDate,
-            entry.endDate,
-            entry.details,
-            entry.meta,
-            entry.sortOrder,
-            entry.sectionId ?? '',
-            JSON.stringify(entry.customValues ?? {}),
-          ]);
+          tx.executeSql(
+            'INSERT INTO entries(id,resumeId,type,title,subtitle,startDate,endDate,details,meta,sortOrder,sectionId,customJson) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)',
+            [
+              entry.id,
+              entry.resumeId,
+              entry.type,
+              entry.title,
+              entry.subtitle,
+              entry.startDate,
+              entry.endDate,
+              entry.details,
+              entry.meta,
+              entry.sortOrder,
+              entry.sectionId ?? '',
+              JSON.stringify(entry.customValues ?? {}),
+            ],
+          );
         }
         for (const section of bundle.sections) {
-          tx.executeSql('INSERT INTO sections(id,resumeId,type,visible,sortOrder,title,color,fieldsJson) VALUES(?,?,?,?,?,?,?,?)', [
-            section.id,
-            section.resumeId,
-            section.type,
-            section.visible ? 1 : 0,
-            section.sortOrder,
-            section.title ?? '',
-            section.color ?? '',
-            JSON.stringify(section.fields ?? []),
-          ]);
+          tx.executeSql(
+            'INSERT INTO sections(id,resumeId,type,visible,sortOrder,title,color,fieldsJson) VALUES(?,?,?,?,?,?,?,?)',
+            [
+              section.id,
+              section.resumeId,
+              section.type,
+              section.visible ? 1 : 0,
+              section.sortOrder,
+              section.title ?? '',
+              section.color ?? '',
+              JSON.stringify(section.fields ?? []),
+            ],
+          );
         }
         for (const type of sectionOrder) {
           if (!bundle.sections.some(section => section.type === type)) {
-            tx.executeSql('INSERT INTO sections(id,resumeId,type,visible,sortOrder) VALUES(?,?,?,?,?)', [
-              makeId(), r.id, type, 1, bundle.sections.length + sectionOrder.indexOf(type),
-            ]);
+            tx.executeSql(
+              'INSERT INTO sections(id,resumeId,type,visible,sortOrder) VALUES(?,?,?,?,?)',
+              [
+                makeId(),
+                r.id,
+                type,
+                1,
+                bundle.sections.length + sectionOrder.indexOf(type),
+              ],
+            );
           }
         }
       }

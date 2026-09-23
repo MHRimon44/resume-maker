@@ -18,7 +18,7 @@ import { colors, space, useAppColors } from '../theme';
 import { chooseTemplateForEditor } from '../store/templateSelection';
 
 const accents: Record<TemplateId, string> = {
-  mehedi: '#174A92',
+  custom: '#174A92',
   ats: '#173B57',
   sidebar: '#5689A4',
   international: '#0E4C77',
@@ -63,9 +63,7 @@ export function TemplatesScreen({
         <Text style={[s.kicker, { color: c.primary }]}>
           NINE RESUME TEMPLATES
         </Text>
-        <Text style={[s.title, { color: c.ink }]}>
-          Your resume template.
-        </Text>
+        <Text style={[s.title, { color: c.ink }]}>Your resume template.</Text>
         <Text style={[s.sub, { color: c.muted }]}>
           Choose the look that fits your resume.
         </Text>
@@ -84,9 +82,24 @@ export function TemplatesScreen({
               { backgroundColor: c.surface, borderColor: c.line },
             ]}
           >
-            <View style={[s.paper, { borderTopColor: accents[item.id] }]}> 
-              {(['sidebar', 'profile', 'navy', 'timeline'] as TemplateId[]).includes(item.id) &&
-                <View style={[s.paperSidebar, { backgroundColor: item.id === 'timeline' ? '#E5F0FC' : item.id === 'profile' ? '#F4F5F7' : '#293844' }]} />}
+            <View style={[s.paper, { borderTopColor: accents[item.id] }]}>
+              {(
+                ['sidebar', 'profile', 'navy', 'timeline'] as TemplateId[]
+              ).includes(item.id) && (
+                <View
+                  style={[
+                    s.paperSidebar,
+                    {
+                      backgroundColor:
+                        item.id === 'timeline'
+                          ? '#E5F0FC'
+                          : item.id === 'profile'
+                          ? '#F4F5F7'
+                          : '#293844',
+                    },
+                  ]}
+                />
+              )}
               <View
                 style={[
                   s.paperName,
@@ -99,14 +112,26 @@ export function TemplatesScreen({
               />
               <View style={s.paperContact} />
               <View
-                style={[s.paperHeading, { backgroundColor: accents[item.id],
-                  height: item.id === 'ats' ? 1 : 4, width: item.id === 'ats' ? '100%' : '42%' }]}
+                style={[
+                  s.paperHeading,
+                  {
+                    backgroundColor: accents[item.id],
+                    height: item.id === 'ats' ? 1 : 4,
+                    width: item.id === 'ats' ? '100%' : '42%',
+                  },
+                ]}
               />
               <View style={s.paperLine} />
               <View style={[s.paperLine, s.short]} />
               <View
-                style={[s.paperHeading, { backgroundColor: accents[item.id],
-                  height: item.id === 'ats' ? 1 : 4, width: item.id === 'ats' ? '100%' : '42%' }]}
+                style={[
+                  s.paperHeading,
+                  {
+                    backgroundColor: accents[item.id],
+                    height: item.id === 'ats' ? 1 : 4,
+                    width: item.id === 'ats' ? '100%' : '42%',
+                  },
+                ]}
               />
               <View style={s.paperLine} />
               <View style={s.paperLine} />
@@ -121,8 +146,12 @@ export function TemplatesScreen({
                 {item.description}
               </Text>
               <View style={s.chooseRow}>
-                <Text style={[s.choose, { color: c.primary }]}>{busy ? 'Please wait…' : 'Use this style'}</Text>
-                {!busy && <AppIcon name="arrow-right" size={18} color={c.primary} />}
+                <Text style={[s.choose, { color: c.primary }]}>
+                  {busy ? 'Please wait…' : 'Use this style'}
+                </Text>
+                {!busy && (
+                  <AppIcon name="arrow-right" size={18} color={c.primary} />
+                )}
               </View>
             </View>
           </Pressable>
@@ -156,7 +185,12 @@ const s = StyleSheet.create({
     maxWidth: 310,
   },
   sub: { color: colors.muted, lineHeight: 19, marginTop: 7 },
-  chooseRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10 },
+  chooseRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 10,
+  },
   list: { paddingHorizontal: space.md, paddingBottom: 32, gap: 10 },
   card: {
     backgroundColor: colors.surface,
@@ -179,7 +213,11 @@ const s = StyleSheet.create({
     elevation: 2,
   },
   paperSidebar: {
-    position: 'absolute', left: 0, top: 0, bottom: 0, width: '30%',
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: '30%',
     backgroundColor: '#293844',
   },
   paperName: { height: 6, borderRadius: 3, marginBottom: 7 },

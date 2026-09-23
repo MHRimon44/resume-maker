@@ -14,11 +14,6 @@ import {
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
-import {
-  NestableDraggableFlatList,
-  NestableScrollContainer,
-  ScaleDecorator,
-} from 'react-native-draggable-flatlist';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   Button,
@@ -189,6 +184,24 @@ export function EditorScreen({
         },
       ],
     );
+  const moveSection = (sectionId: string, direction: -1 | 1) => {
+    const ordered = [...data.sections].sort(
+      (a, b) => a.sortOrder - b.sortOrder,
+    );
+    const fromIndex = ordered.findIndex(item => item.id === sectionId);
+    const toIndex = fromIndex + direction;
+    if (fromIndex < 0 || toIndex < 0 || toIndex >= ordered.length) return;
+
+    const [movedSection] = ordered.splice(fromIndex, 1);
+    ordered.splice(toIndex, 0, movedSection);
+    setData({
+      ...data,
+      sections: ordered.map((item, index) => ({
+        ...item,
+        sortOrder: index,
+      })),
+    });
+  };
   const save = async () => {
     if (saving) return;
     try {
@@ -292,7 +305,7 @@ export function EditorScreen({
           />
         ))}
       </ScrollView>
-      <NestableScrollContainer
+      <ScrollView
         key={tab}
         contentContainerStyle={s.content}
         keyboardShouldPersistTaps="handled"
@@ -496,132 +509,118 @@ export function EditorScreen({
                 onChange={accent => patch({ accent })}
               />
               {colorRoles.map(({ key, label }) => (
-                  <ColorPicker key={key} label={label}
-                    value={
-                      r.style?.colors?.[key] ??
-                      (key === 'sidebar'
-                        ? '#293844'
-                        : ['header', 'divider', 'sectionBackground'].includes(
-                            key,
-                          )
-                        ? r.accent
-                        : key === 'photoBorder' || key === 'sidebarHeading'
-                        ? '#FFFFFF'
-                        : key === 'page'
-                        ? '#FFFFFF'
-                        : key === 'contact'
-                        ? '#374151'
-                        : '#222222')
-                    }
-                    onChange={value =>
-                      patch({
-                        style: {
-                          ...r.style,
-                          colors: { ...r.style?.colors, [key]: value },
-                        },
-                      })
-                    }
-                  />
+                <ColorPicker
+                  key={key}
+                  label={label}
+                  value={
+                    r.style?.colors?.[key] ??
+                    (key === 'sidebar'
+                      ? '#293844'
+                      : ['header', 'divider', 'sectionBackground'].includes(key)
+                      ? r.accent
+                      : key === 'photoBorder' || key === 'sidebarHeading'
+                      ? '#FFFFFF'
+                      : key === 'page'
+                      ? '#FFFFFF'
+                      : key === 'contact'
+                      ? '#374151'
+                      : '#222222')
+                  }
+                  onChange={value =>
+                    patch({
+                      style: {
+                        ...r.style,
+                        colors: { ...r.style?.colors, [key]: value },
+                      },
+                    })
+                  }
+                />
               ))}
             </Card>
-            <NestableDraggableFlatList
-              data={[...data.sections].sort((a, b) => a.sortOrder - b.sortOrder)}
-              keyExtractor={item => item.id}
-              activationDistance={8}
-              contentContainerStyle={s.dragList}
-              onDragEnd={({ data: nextSections }) =>
-                setData({
-                  ...data,
-                  sections: nextSections.map((item, index) => ({
-                    ...item,
-                    sortOrder: index,
-                  })),
-                })
-              }
-              renderItem={({ item: x, drag, isActive }) => {
+            {[...data.sections]
+              .sort((a, b) => a.sortOrder - b.sortOrder)
+              .map((x, index, orderedSections) => {
                 const sectionCard = (
-                  <ScaleDecorator>
-                    <Card style={isActive ? s.draggingCard : undefined}>
-                      <View style={s.orderRow}>
-                        <Pressable
-                          accessibilityRole="button"
-                          accessibilityLabel={`Drag ${sectionTitle(x)}`}
-                          accessibilityHint="Press and hold, then drag to reorder"
-                          delayLongPress={120}
-                          disabled={isActive}
-                          onLongPress={drag}
-                          style={({ pressed }) => [
-                            s.dragHandle,
-                            { backgroundColor: c.primarySoft, borderColor: c.line },
-                            pressed && s.dragHandlePressed,
-                          ]}
-                        >
-                          <AppIcon name="drag-vertical" size={24} color={c.primary} />
-                        </Pressable>
-                        <Switch
-                          value={x.visible}
-                          onValueChange={visible =>
-                            setData({
-                              ...data,
-                              sections: data.sections.map(z =>
-                                z.id === x.id ? { ...z, visible } : z,
-                              ),
+                  <Card>
+                    <View style={s.orderRow}>
+                      <Pressable
+                        style={s.orderTitlePressable}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Rename ${sectionTitle(x)}`}
+                        accessibilityHint="Long press to edit this section name"
+                        delayLongPress={350}
+                        onLongPress={() => startRenamingSection(x)}
+                      >
+                        <Text style={[s.orderTitle, { color: c.ink }]}>
+                          {sectionTitle(x)}
+                        </Text>
+                        <Text style={[s.longPressHint, { color: c.muted }]}>
+                          Long press to rename
+                        </Text>
+                      </Pressable>
+                      {x.type === 'custom' && (
+                        <IconButton
+                          icon="pencil-outline"
+                          accessibilityLabel={`Edit ${sectionTitle(x)} fields`}
+                          onPress={() =>
+                            navigation.navigate('CustomSection', {
+                              resumeId: r.id,
+                              sectionId: x.id,
+                              title: x.title,
+                              fields: x.fields?.length
+                                ? x.fields
+                                : customFieldsFor(x),
                             })
                           }
                         />
-                        <Pressable
-                          style={s.orderTitlePressable}
-                          accessibilityRole="button"
-                          accessibilityLabel={`Rename ${sectionTitle(x)}`}
-                          accessibilityHint="Long press to edit this section name"
-                          delayLongPress={350}
-                          onLongPress={() => startRenamingSection(x)}
-                        >
-                          <Text style={[s.orderTitle, { color: c.ink }]}> 
-                            {sectionTitle(x)}
-                          </Text>
-                          <Text style={[s.longPressHint, { color: c.muted }]}> 
-                            Long press to rename
-                          </Text>
-                        </Pressable>
-                        {x.type === 'custom' && (
+                      )}
+                      <View style={s.moveButtons}>
+                        {index > 0 && (
                           <IconButton
-                            icon="pencil-outline"
-                            accessibilityLabel={`Edit ${sectionTitle(x)} fields`}
-                            onPress={() =>
-                              navigation.navigate('CustomSection', {
-                                resumeId: r.id,
-                                sectionId: x.id,
-                                title: x.title,
-                                fields: x.fields?.length
-                                  ? x.fields
-                                  : customFieldsFor(x),
-                              })
-                            }
+                            icon="arrow-up"
+                            accessibilityLabel={`Move ${sectionTitle(x)} up`}
+                            onPress={() => moveSection(x.id, -1)}
                           />
                         )}
-                        <ColorPicker
-                          compact
-                          value={
-                            x.color ||
-                            r.style?.colors?.sectionHeading ||
-                            r.accent
-                          }
-                          onChange={color =>
-                            setData({
-                              ...data,
-                              sections: data.sections.map(z =>
-                                z.id === x.id ? { ...z, color } : z,
-                              ),
-                            })
-                          }
-                        />
+                        {index < orderedSections.length - 1 && (
+                          <IconButton
+                            icon="arrow-down"
+                            accessibilityLabel={`Move ${sectionTitle(x)} down`}
+                            onPress={() => moveSection(x.id, 1)}
+                          />
+                        )}
                       </View>
-                    </Card>
-                  </ScaleDecorator>
+                      <ColorPicker
+                        compact
+                        value={
+                          x.color || r.style?.colors?.sectionHeading || r.accent
+                        }
+                        onChange={color =>
+                          setData({
+                            ...data,
+                            sections: data.sections.map(z =>
+                              z.id === x.id ? { ...z, color } : z,
+                            ),
+                          })
+                        }
+                      />{' '}
+                      <Switch
+                        value={x.visible}
+                        onValueChange={visible =>
+                          setData({
+                            ...data,
+                            sections: data.sections.map(z =>
+                              z.id === x.id ? { ...z, visible } : z,
+                            ),
+                          })
+                        }
+                      />
+                    </View>
+                  </Card>
                 );
                 return x.type === 'custom' ? (
                   <Swipeable
+                    key={x.id}
                     overshootRight={false}
                     renderRightActions={() => (
                       <Pressable
@@ -630,15 +629,20 @@ export function EditorScreen({
                         onPress={() => confirmRemoveSection(x)}
                         style={[s.swipeDelete, { backgroundColor: c.danger }]}
                       >
-                        <AppIcon name="delete-outline" size={26} color="#FFFFFF" />
+                        <AppIcon
+                          name="delete-outline"
+                          size={26}
+                          color="#FFFFFF"
+                        />
                       </Pressable>
                     )}
                   >
                     {sectionCard}
                   </Swipeable>
-                ) : sectionCard;
-              }}
-            />
+                ) : (
+                  <View key={x.id}>{sectionCard}</View>
+                );
+              })}
             <Card>
               <Button
                 icon="plus"
@@ -760,7 +764,7 @@ export function EditorScreen({
             </View>
           </>
         )}
-      </NestableScrollContainer>
+      </ScrollView>
       <Modal
         visible={!!renamingSection}
         transparent
@@ -1121,17 +1125,7 @@ const s = StyleSheet.create({
   swatch: { width: 31, height: 31, borderRadius: 16 },
   swatchOn: { borderWidth: 4, borderColor: '#C7C9D2' },
   orderRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  dragList: { gap: 10 },
-  dragHandle: {
-    width: 36,
-    height: 42,
-    borderRadius: 10,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  dragHandlePressed: { opacity: 0.65 },
-  draggingCard: { opacity: 0.96, elevation: 8 },
+  moveButtons: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   orderTitlePressable: { flex: 1, minWidth: 0 },
   orderTitle: { fontWeight: '800', color: colors.ink },
   longPressHint: { fontSize: 10, marginTop: 2 },
