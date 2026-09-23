@@ -51,7 +51,7 @@ export function referenceResumeHtml(bundle: ResumeBundle) {
           ${extras}
         </article>`;
       }).join('');
-    return `<section><h2><span>${esc(type === 'summary' ? 'Summary' : sectionTitle(section))}</span></h2>${body}</section>`;
+    return `<section><h2><span>${esc(sectionTitle(section))}</span></h2>${body}</section>`;
   };
   return `<!doctype html><html><head><meta charset="utf-8"/><style>
     @page { size: ${resume.paperSize}; margin: 0; }

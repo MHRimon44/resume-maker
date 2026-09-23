@@ -12,6 +12,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   Button,
+  AppIcon,
   Card,
   Empty,
   IconButton,
@@ -45,7 +46,7 @@ export function HomeScreen({ navigation }: P) {
         brandImage={require('../../assets/logo.png')}
         right={
           <IconButton
-            icon="⚙︎"
+            icon="cog-outline"
             accessibilityLabel="Open settings"
             onPress={() => navigation.navigate('Settings')}
           />
@@ -63,7 +64,8 @@ export function HomeScreen({ navigation }: P) {
           </Text>
         </View>
         <Button
-          label="＋ Create a resume"
+          icon="plus"
+          label="Create a resume"
           onPress={() => navigation.navigate('Templates')}
         />
       </View>
@@ -126,7 +128,7 @@ export function HomeScreen({ navigation }: P) {
                     </Text>
                     <View style={s.actions}>
                       <IconButton
-                        icon="↗"
+                        icon="open-in-new"
                         accessibilityLabel={`Preview ${item.title}`}
                         onPress={event => {
                           event.stopPropagation();
@@ -134,7 +136,7 @@ export function HomeScreen({ navigation }: P) {
                         }}
                       />
                       <IconButton
-                        icon="⧉"
+                        icon="content-copy"
                         accessibilityLabel={`Duplicate ${item.title}`}
                         onPress={async event => {
                           event.stopPropagation();
@@ -143,7 +145,7 @@ export function HomeScreen({ navigation }: P) {
                         }}
                       />
                       <IconButton
-                        icon="⌫"
+                        icon="delete-outline"
                         kind="danger"
                         accessibilityLabel={`Delete ${item.title}`}
                         onPress={event => {
@@ -167,7 +169,7 @@ export function HomeScreen({ navigation }: P) {
                       />
                     </View>
                   </View>
-                  <Text style={[s.chevron, { color: c.muted }]}>›</Text>
+                  <AppIcon name="chevron-right" size={24} color={c.muted} />
                 </View>
               </Card>
             </Pressable>

@@ -34,6 +34,7 @@
     "@react-navigation/native-stack": "^7.19.2",
     "react": "19.2.3",
     "react-native": "0.87.1",
+    "react-native-draggable-flatlist": "^4.0.3",
     "react-native-fs": "^2.20.0",
     "react-native-gesture-handler": "^3.3.0",
     "react-native-google-mobile-ads": "^17.0.0",
@@ -43,6 +44,7 @@
     "react-native-screens": "^4.28.0",
     "react-native-share": "^12.3.1",
     "react-native-sqlite-storage": "^6.0.1",
+    "react-native-vector-icons": "^10.3.0",
     "react-native-worklets": "^0.13.0",
     "yup": "^1.7.1",
     "zustand": "^5.0.15"

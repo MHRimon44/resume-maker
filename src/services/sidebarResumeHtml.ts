@@ -23,10 +23,10 @@ export function sidebarResumeHtml(bundle: ResumeBundle): string {
   const main = sections.filter(s => s.visible && !(['skills', 'awards', 'certifications', 'languages'] as SectionType[]).includes(s.type))
     .sort((a, b) => a.sortOrder - b.sortOrder).map(section => {
       const type = section.type;
-      if (type === 'summary') return resume.summary ? `<section data-section="${section.id}"><h2><span>OBJECTIVE</span></h2><p>${esc(resume.summary)}</p></section>` : '';
+      if (type === 'summary') return resume.summary ? `<section data-section="${section.id}"><h2><span>${esc(sectionTitle(section).toUpperCase())}</span></h2><p>${esc(resume.summary)}</p></section>` : '';
       const data = entriesForSection(bundle, section);
       if (!data.length) return '';
-      const title = type === 'experience' ? 'WORK EXPERIENCE' : type === 'leadership' ? 'ACTIVITIES' : sectionTitle(section).toUpperCase();
+      const title = sectionTitle(section).toUpperCase();
       return `<section data-section="${section.id}"><h2><span>${esc(title)}</span></h2>${data.map(e => {
         const extra = parseEntryExtras(e.meta);
         const period = [e.startDate, e.endDate].filter(Boolean).join(' - ');

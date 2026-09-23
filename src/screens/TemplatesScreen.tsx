@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ScreenHeader } from '../components/ui';
+import { AppIcon, ScreenHeader } from '../components/ui';
 import { templates } from '../constants/content';
 import { resumeRepository } from '../repositories/resumeRepository';
 import { RootStackParamList, TemplateId } from '../types';
@@ -145,9 +145,14 @@ export function TemplatesScreen({
               <Text style={[s.desc, { color: c.muted }]}>
                 {item.description}
               </Text>
-              <Text style={[s.choose, { color: c.primary }]}>
-                {busy ? 'Please wait…' : 'Use this style  ↗'}
-              </Text>
+              <View style={s.chooseRow}>
+                <Text style={[s.choose, { color: c.primary }]}>
+                  {busy ? 'Please wait…' : 'Use this style'}
+                </Text>
+                {!busy && (
+                  <AppIcon name="arrow-right" size={18} color={c.primary} />
+                )}
+              </View>
             </View>
           </Pressable>
         )}
@@ -180,6 +185,12 @@ const s = StyleSheet.create({
     maxWidth: 310,
   },
   sub: { color: colors.muted, lineHeight: 19, marginTop: 7 },
+  chooseRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 10,
+  },
   list: { paddingHorizontal: space.md, paddingBottom: 32, gap: 10 },
   card: {
     backgroundColor: colors.surface,
@@ -237,7 +248,7 @@ const s = StyleSheet.create({
   choose: {
     color: colors.primary,
     fontWeight: '800',
-    marginTop: 10,
+    marginTop: 0,
     fontSize: 13,
   },
   activity: { position: 'absolute', bottom: 10, alignSelf: 'center' },

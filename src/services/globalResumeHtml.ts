@@ -15,8 +15,7 @@ export function globalResumeHtml(bundle: ResumeBundle): string {
   const color = /^#[0-9a-fA-F]{6}$/.test(resume.accent) ? resume.accent : '#174A92';
   const side = variant === 'profile' || variant === 'navy' || variant === 'timeline';
   const twoColumn = variant === 'executive';
-  const label = (section: ResumeSection) => section.type === 'summary' ? 'About me' : section.type === 'experience' ? 'Work experience' :
-    section.type === 'education' ? 'Education and training' : section.type === 'leadership' ? 'Activities' : sectionTitle(section);
+  const label = (section: ResumeSection) => sectionTitle(section);
   const sectionHtml = (section: ResumeSection) => {
     const type = section.type;
     const records = entriesForSection(bundle, section);

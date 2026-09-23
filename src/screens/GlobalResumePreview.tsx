@@ -19,10 +19,12 @@ export function GlobalResumePreview({ bundle }: { bundle: ResumeBundle }) {
     .sort((a, b) => a.sortOrder - b.sortOrder).map(s => {
       const records = entriesForSection(bundle, s);
       if (s.type === 'summary' ? !resume.summary : !records.length) return null;
-      const title = s.type === 'summary' ? 'About me' : s.type === 'experience' ? 'Work experience' :
-        s.type === 'education' ? 'Education and training' : s.type === 'leadership' ? 'Activities' : sectionTitle(s);
+      const title = sectionTitle(s);
       return <View key={s.id} style={styles.section}>
-        <Text style={[styles.sectionTitle, { borderBottomColor: s.color || color, color: s.color || style.sectionHeading || (onDark ? '#FFFFFF' : '#253440'), fontFamily, fontSize: 10 * scale }]}>{title.toUpperCase()}</Text>
+        <Text style={[styles.sectionTitle, { borderBottomColor: style.divider || s.color || color,
+          backgroundColor: style.sectionBackground,
+          color: s.color || (onDark ? style.sidebarHeading : undefined) || style.sectionHeading || (onDark ? '#FFFFFF' : '#253440'),
+          fontFamily, fontSize: 10 * scale }]}>{title.toUpperCase()}</Text>
         {s.type === 'summary' ? <Text style={[styles.body, { color: style.body || (onDark ? '#FFFFFF' : undefined), fontFamily, fontSize: 8 * scale }]}>{resume.summary}</Text> : records.map(e =>
           <View key={e.id} style={[styles.entry, (variant === 'timeline' || variant === 'profile') && pick !== sidePick && styles.timelineEntry,
             (variant === 'timeline' || variant === 'profile') && pick !== sidePick && { borderLeftColor: color }]}>
@@ -34,7 +36,8 @@ export function GlobalResumePreview({ bundle }: { bundle: ResumeBundle }) {
       </View>;
     });
   function sidePick(type: SectionType) { return sideTypes.includes(type); }
-  const photo = !!p.photoUri && <Image source={{ uri: p.photoUri }} style={styles.photo} />;
+  const photo = !!p.photoUri && <Image source={{ uri: p.photoUri }} style={[styles.photo,
+    { borderColor: style.photoBorder, borderWidth: style.photoBorder ? 2 : 0 }]} />;
   const identity = <View style={executive ? { flex: 1 } : undefined}><Text style={[styles.name, { color: style.name || (variant === 'navy' ? '#FFFFFF' : undefined), fontFamily, fontSize: 19 * scale }]}>{p.fullName || 'Your Name'}</Text>
     <Text style={[styles.headline, { color: style.headline || (variant === 'navy' ? '#E4E9EE' : undefined), fontFamily, fontSize: 9 * scale }]}>{p.headline}</Text></View>;
   if (side) return <View style={[styles.page, { backgroundColor: style.page }]}>
@@ -50,7 +53,7 @@ export function GlobalResumePreview({ bundle }: { bundle: ResumeBundle }) {
     </View>
   </View>;
   if (executive) return <View style={[styles.page, { padding: 20, backgroundColor: style.page }]}>
-    <View style={[styles.executiveHead, { borderColor: color, backgroundColor: style.header }]}><View style={styles.row}>{photo}{identity}</View>
+    <View style={[styles.executiveHead, { borderColor: style.divider || color, backgroundColor: style.header }]}><View style={styles.row}>{photo}{identity}</View>
       {!!resume.summary && <Text style={[styles.body, { color: style.body, fontFamily, fontSize: 8 * scale }]}>{resume.summary}</Text>}</View>
     <View style={[styles.contactStrip, { backgroundColor: style.header }]}><Text style={[styles.whiteContact, { color: style.contact, fontFamily }]}>{contact}</Text></View>
     <View style={styles.columns}><View style={styles.half}>{sectionNodes(t => leftTypes.includes(t))}</View>

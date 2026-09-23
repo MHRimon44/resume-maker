@@ -37,7 +37,7 @@ function Channel({ label, value, color, onChange }: {
   </View>;
 }
 
-export function ColorPicker({ value, onChange }: { value: string; onChange: (hex: string) => void }) {
+export function ColorPicker({ value, onChange, compact = false }: { value: string; onChange: (hex: string) => void; compact?: boolean }) {
   const c = useAppColors();
   const [open, setOpen] = useState(false);
   const [hex, setHex] = useState(value);
@@ -55,9 +55,11 @@ export function ColorPicker({ value, onChange }: { value: string; onChange: (hex
   };
   const palette = Array.from({ length: 24 }, (_, i) => hsvToHex(i * 15, 1, 1));
   return <>
-    <Pressable accessibilityRole="button" onPress={() => setOpen(true)} style={[styles.trigger, { borderColor: c.line, backgroundColor: c.surface }]}>
+    <Pressable accessibilityRole="button" accessibilityLabel={`Choose color ${value}`}
+      onPress={() => setOpen(true)} style={[styles.trigger, compact && styles.compactTrigger,
+        { borderColor: c.line, backgroundColor: c.surface }]}> 
       <View style={[styles.sample, { backgroundColor: valid(value) ? value : '#173B57' }]} />
-      <Text style={{ color: c.ink, fontWeight: '700' }}>{value.toUpperCase()}  ·  Choose any color</Text>
+      {!compact && <Text style={{ color: c.ink, fontWeight: '700' }}>{value.toUpperCase()}  ·  Choose any color</Text>}
     </Pressable>
     <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
       <View style={[styles.scrim, { backgroundColor: c.overlay + 'EE' }]}>
@@ -89,6 +91,7 @@ export function ColorPicker({ value, onChange }: { value: string; onChange: (hex
 }
 const styles = StyleSheet.create({
   trigger: { borderWidth: 1, borderRadius: 12, padding: 10, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  compactTrigger: { padding: 4, borderRadius: 9 },
   sample: { width: 30, height: 30, borderRadius: 8 },
   scrim: { flex: 1, justifyContent: 'flex-end' },
   sheet: { padding: 22, paddingBottom: 40, borderTopLeftRadius: 20, borderTopRightRadius: 20 },

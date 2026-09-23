@@ -10,18 +10,31 @@ import {
   ImageSourcePropType,
   View,
 } from 'react-native';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { radius, useAppColors } from '../theme';
+
+export const AppIcon = ({
+  name,
+  size = 21,
+  color,
+}: {
+  name: string;
+  size?: number;
+  color: string;
+}) => <MaterialCommunityIcons name={name} size={size} color={color} />;
 
 export const Button = ({
   label,
   onPress,
   kind = 'primary',
   disabled = false,
+  icon,
 }: {
   label: string;
   onPress: (event: GestureResponderEvent) => void;
   kind?: 'primary' | 'ghost' | 'danger';
   disabled?: boolean;
+  icon?: string;
 }) => {
   const c = useAppColors();
   const backgroundColor =
@@ -37,11 +50,23 @@ export const Button = ({
         (pressed || disabled) && s.pressed,
       ]}
     >
-      <Text
-        style={[s.buttonText, { color: kind === 'ghost' ? c.ink : '#FFFFFF' }]}
-      >
-        {label}
-      </Text>
+      <View style={s.buttonContent}>
+        {!!icon && (
+          <AppIcon
+            name={icon}
+            size={19}
+            color={kind === 'ghost' ? c.ink : '#FFFFFF'}
+          />
+        )}
+        <Text
+          style={[
+            s.buttonText,
+            { color: kind === 'ghost' ? c.ink : '#FFFFFF' },
+          ]}
+        >
+          {label}
+        </Text>
+      </View>
     </Pressable>
   );
 };
@@ -74,7 +99,7 @@ export const IconButton = ({
         pressed && s.pressed,
       ]}
     >
-      <Text style={[s.iconButtonText, { color }]}>{icon}</Text>
+      <AppIcon name={icon} size={21} color={color} />
     </Pressable>
   );
 };
@@ -142,10 +167,10 @@ export const Empty = ({
   const c = useAppColors();
   return (
     <View style={s.empty}>
-      <Text style={[s.emptyIcon, { color: c.primary }]}>✦</Text>
+      <AppIcon name="file-document-edit-outline" size={42} color={c.primary} />
       <Text style={[s.h2, { color: c.ink }]}>{title}</Text>
       <Text style={[s.body, { color: c.muted }]}>{body}</Text>
-      <Button label={action} onPress={onPress} />
+      <Button icon="arrow-right" label={action} onPress={onPress} />
     </View>
   );
 };
@@ -215,7 +240,7 @@ export const ScreenHeader = ({
             hitSlop={12}
             style={[s.backButton, { backgroundColor: c.primarySoft }]}
           >
-            <Text style={[s.backArrow, { color: c.primary }]}>‹</Text>
+            <AppIcon name="chevron-left" size={30} color={c.primary} />
           </Pressable>
         ) : (
           <View style={s.brandMark}>
@@ -257,6 +282,12 @@ const s = StyleSheet.create({
     paddingVertical: 10,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  buttonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
   },
   pressed: { opacity: 0.7 },
   buttonText: {

@@ -8,7 +8,8 @@ export const templates: {
   {
     id: 'custom',
     name: 'Navy Badge Resume',
-    description: 'Compact navy headings and two-column header',
+    description:
+      'Compact navy headings and two-column header, based on your PDF',
     free: true,
   },
   {

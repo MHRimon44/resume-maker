@@ -102,11 +102,13 @@ export function SettingsScreen({
           </Text>
           <View style={s.spacer} />
           <Button
+            icon="export-variant"
             label="Export backup"
             onPress={async () => backupJson(await resumeRepository.exportAll())}
           />
           <View style={s.buttonSpacer} />
           <Button
+            icon="import"
             label={isRestoring ? 'Restoring…' : 'Import and restore backup'}
             kind="ghost"
             disabled={isRestoring}
@@ -129,6 +131,7 @@ export function SettingsScreen({
           </Text>
           <View style={s.spacer} />
           <Button
+            icon="delete-outline"
             label="Delete everything"
             kind="danger"
             onPress={() =>

@@ -15,8 +15,8 @@ export function SidebarResumePreview({ bundle }: { bundle: ResumeBundle }) {
   const sideItems = (type: SectionType, heading: string) => {
     const list = visible(type) ? entries.filter(e => e.type === type) : [];
     if (!list.length) return null;
-    return <View style={s.sideSection} key={type}>
-      <Text style={[s.sideHeading, { color: style.sectionHeading, fontFamily, fontSize: 10 * scale }]}>{heading}</Text>
+    return <View style={[s.sideSection, { borderTopColor: style.divider }]} key={type}>
+      <Text style={[s.sideHeading, { color: style.sidebarHeading || style.sectionHeading, fontFamily, fontSize: 10 * scale }]}>{heading}</Text>
       {list.map(e => <View key={e.id} style={s.sideItem}>
         <Text style={[s.sideTitle, { color: style.entryTitle, fontFamily, fontSize: 8 * scale }]}>{e.title}</Text>
         {!!e.subtitle && <Text style={[s.sideText, { color: style.body, fontFamily, fontSize: 8 * scale }]}>{e.subtitle}</Text>}
@@ -28,7 +28,7 @@ export function SidebarResumePreview({ bundle }: { bundle: ResumeBundle }) {
     <View style={[s.top, { backgroundColor: style.header || resume.accent }]}>
       <View style={s.identity}><Text style={[s.name, { fontSize: 22 * scale, color: style.name, fontFamily }]}>{p.fullName || 'Your Name'}</Text>
         <Text style={[s.headline, { fontSize: 12 * scale, color: style.headline, fontFamily }]}>{p.headline}</Text></View>
-      {!!p.photoUri && <Image source={{ uri: p.photoUri }} style={s.photo} />}
+      {!!p.photoUri && <Image source={{ uri: p.photoUri }} style={[s.photo, { borderColor: style.photoBorder || '#FFFFFF' }]} />}
     </View>
     <View style={s.columns}>
       <View style={[s.sidebar, { backgroundColor: style.sidebar }]}>
@@ -36,7 +36,7 @@ export function SidebarResumePreview({ bundle }: { bundle: ResumeBundle }) {
           .filter(Boolean).map((value, index) => <Text key={index} style={[s.sideContact, { color: style.contact, fontFamily, fontSize: 8 * scale }]}>{value}</Text>)}
         {sideItems('skills', 'SKILLS')}{sideItems('languages', 'LANGUAGES')}
         {sideItems('awards', 'HONORS & AWARDS')}{sideItems('certifications', 'CERTIFICATIONS')}
-        {!!p.interests && <View style={s.sideSection}><Text style={[s.sideHeading, { color: style.sectionHeading, fontFamily }]}>INTERESTS</Text>
+        {!!p.interests && <View style={[s.sideSection, { borderTopColor: style.divider }]}><Text style={[s.sideHeading, { color: style.sidebarHeading || style.sectionHeading, fontFamily }]}>INTERESTS</Text>
           <Text style={[s.sideText, { color: style.body, fontFamily }]}>{p.interests}</Text></View>}
       </View>
       <View style={[s.main, { backgroundColor: style.page }]}>
@@ -44,10 +44,11 @@ export function SidebarResumePreview({ bundle }: { bundle: ResumeBundle }) {
           .sort((a, b) => a.sortOrder - b.sortOrder).map(section => {
             const list = entriesForSection(bundle, section);
             if (section.type === 'summary' ? !resume.summary : !list.length) return null;
-            const heading = section.type === 'summary' ? 'OBJECTIVE' : section.type === 'experience' ? 'WORK EXPERIENCE' :
-              section.type === 'leadership' ? 'ACTIVITIES' : sectionTitle(section).toUpperCase();
+            const heading = sectionTitle(section).toUpperCase();
             return <View key={section.id} style={s.section}>
-              <View style={s.headingRow}><Text style={[s.heading, { fontSize: 10 * scale, color: section.color || style.sectionHeading, fontFamily }]}>{heading}</Text><View style={s.rule} /></View>
+              <View style={s.headingRow}><Text style={[s.heading, { fontSize: 10 * scale, color: section.color || style.sectionHeading,
+                backgroundColor: style.sectionBackground, fontFamily }]}>{heading}</Text>
+                <View style={[s.rule, { backgroundColor: style.divider }]} /></View>
               {section.type === 'summary' ? <Text style={[s.body, { color: style.body, fontFamily, fontSize: 8 * scale }]}>{resume.summary}</Text> : list.map(e => {
                 const extra = parseEntryExtras(e.meta);
                 const period = [e.startDate, e.endDate].filter(Boolean).join(' - ');

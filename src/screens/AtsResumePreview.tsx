@@ -11,12 +11,10 @@ export function AtsResumePreview({ bundle }: { bundle: ResumeBundle }) {
   const scale = resume.fontScale;
   const style = resume.style?.colors ?? {};
   const fontFamily = fontFamilies.find(x => x.key === fontFor(resume))!.native;
-  const heading = (section: typeof bundle.sections[number]) => section.type === 'summary' ? 'Professional Summary' :
-    section.type === 'experience' ? 'Professional Experience' : section.type === 'skills' ? 'Technical Skills' :
-    section.type === 'projects' ? 'Selected Projects' : sectionTitle(section);
+  const heading = (section: typeof bundle.sections[number]) => sectionTitle(section);
   return <View style={[s.page, { backgroundColor: style.page }]}>
     <View style={s.header}>
-      {!!p.photoUri && <Image source={{ uri: p.photoUri }} style={s.photo} />}
+      {!!p.photoUri && <Image source={{ uri: p.photoUri }} style={[s.photo, { borderColor: style.photoBorder, borderWidth: style.photoBorder ? 2 : 0 }]} />}
       <Text style={[s.name, { fontSize: 19 * scale, color: style.name, fontFamily }]}>{p.fullName || 'Your Name'}</Text>
       {!!p.headline && <Text style={[s.headline, { fontSize: 10 * scale, color: style.headline, fontFamily }]}>{p.headline}</Text>}
       <Text style={[s.contact, { color: style.contact, fontFamily }]}>{[p.location, p.phone, p.email].filter(Boolean).join('  |  ')}</Text>
@@ -26,7 +24,7 @@ export function AtsResumePreview({ bundle }: { bundle: ResumeBundle }) {
       const items = entriesForSection(bundle, section);
       if (section.type === 'summary' ? !resume.summary : !items.length) return null;
       return <View key={section.id} style={s.section}>
-        <Text style={[s.heading, { color: section.color || style.sectionHeading || resume.accent, borderBottomColor: section.color || resume.accent, fontSize: 11 * scale, fontFamily }]}>{heading(section)}</Text>
+        <Text style={[s.heading, { color: section.color || style.sectionHeading || resume.accent, borderBottomColor: style.divider || section.color || resume.accent, backgroundColor: style.sectionBackground, fontSize: 11 * scale, fontFamily }]}>{heading(section)}</Text>
         {section.type === 'summary' ? <Text style={[s.body, { fontSize: 9 * scale, color: style.body, fontFamily }]}>{resume.summary}</Text> : items.map(e => {
           const extra = parseEntryExtras(e.meta);
           const right = section.type === 'projects' ? e.subtitle : [e.startDate, e.endDate].filter(Boolean).join(' – ');

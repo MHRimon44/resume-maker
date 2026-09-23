@@ -53,7 +53,8 @@ export function PreviewScreen({
         onBack={navigation.goBack}
         right={
           <Button
-            label={busy ? 'Exporting…' : '↓ PDF'}
+            icon="file-pdf-box"
+            label={busy ? 'Exporting…' : 'PDF'}
             disabled={busy}
             onPress={async () => {
               try {

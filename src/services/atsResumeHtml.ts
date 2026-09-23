@@ -18,9 +18,7 @@ export function atsResumeHtml(bundle: ResumeBundle): string {
     const type = item.type;
     const items = entriesForSection(bundle, item);
     if (type === 'summary' ? !resume.summary : !items.length) return '';
-    const heading = type === 'summary' ? 'Professional Summary' :
-      type === 'experience' ? 'Professional Experience' :
-      type === 'skills' ? 'Technical Skills' : type === 'projects' ? 'Selected Projects' : sectionTitle(item);
+    const heading = sectionTitle(item);
     const content = type === 'summary' ? `<p>${esc(resume.summary)}</p>` : items.map(e => {
       const extra = parseEntryExtras(e.meta);
       const date = [e.startDate, e.endDate].filter(Boolean).join(' – ');

@@ -13,12 +13,20 @@ import {
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
+import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
+import {
+  NestableDraggableFlatList,
+  NestableScrollContainer,
+  ScaleDecorator,
+} from 'react-native-draggable-flatlist';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   Button,
+  AppIcon,
   Card,
   Chip,
   Field,
+  IconButton,
   ScreenHeader,
 } from '../components/ui';
 import {
@@ -27,7 +35,12 @@ import {
   summaryExamples,
 } from '../constants/content';
 import { resumeRepository } from '../repositories/resumeRepository';
-import { Entry, ResumeBundle, RootStackParamList, SectionType } from '../types';
+import {
+  Entry,
+  ResumeBundle,
+  ResumeSection,
+  RootStackParamList,
+} from '../types';
 import { parseErrors, resumeSchema } from '../utils/validation';
 import { colors, space, useAppColors } from '../theme';
 import { useSettingsStore } from '../store/settingsStore';
@@ -36,6 +49,8 @@ import { chooseResumePhoto } from '../services/photoService';
 import { takeTemplateForEditor } from '../store/templateSelection';
 import { ColorPicker } from '../components/ColorPicker';
 import { colorRoles, fontFamilies, sectionTitle } from '../utils/resumeStyle';
+import { displayCustomEntry, customFieldsFor } from '../utils/resumeStyle';
+import { takeCustomSectionDraft } from '../store/customSectionDraft';
 import {
   entryFields,
   parseEntryExtras,
@@ -48,10 +63,11 @@ export function EditorScreen({
   const c = useAppColors();
   const [data, setData] = useState<ResumeBundle>(),
     [tab, setTab] = useState<string>('basics'),
-    [newSection, setNewSection] = useState(''),
     [entry, setEntry] = useState<Entry>(),
     [saving, setSaving] = useState(false),
-    [errors, setErrors] = useState<Record<string, string>>({});
+    [errors, setErrors] = useState<Record<string, string>>({}),
+    [renamingSection, setRenamingSection] = useState<ResumeSection>(),
+    [sectionNameDraft, setSectionNameDraft] = useState('');
   const load = useCallback(
     async () => setData(await resumeRepository.bundle(route.params.resumeId)),
     [route.params.resumeId],
@@ -59,35 +75,120 @@ export function EditorScreen({
   useEffect(() => {
     load();
   }, [load]);
-  useFocusEffect(useCallback(() => {
-    const templateId = takeTemplateForEditor(route.params.resumeId);
-    if (templateId) {
-      setData(current => current && ({
-        ...current,
-        resume: {
-          ...current.resume,
-          templateId,
-          accent: current.resume.accent,
-        },
-      }));
-    }
-  }, [route.params.resumeId]));
+  useFocusEffect(
+    useCallback(() => {
+      const templateId = takeTemplateForEditor(route.params.resumeId);
+      const customDraft = takeCustomSectionDraft(route.params.resumeId);
+      if (templateId) {
+        setData(
+          current =>
+            current && {
+              ...current,
+              resume: {
+                ...current.resume,
+                templateId,
+                accent: current.resume.accent,
+              },
+            },
+        );
+      }
+      if (customDraft) {
+        const sectionId = customDraft.id ?? makeId();
+        setData(
+          current =>
+            current && {
+              ...current,
+              sections: customDraft.id
+                ? current.sections.map(section =>
+                    section.id === customDraft.id
+                      ? {
+                          ...section,
+                          title: customDraft.title,
+                          fields: customDraft.fields,
+                        }
+                      : section,
+                  )
+                : [
+                    ...current.sections,
+                    {
+                      id: sectionId,
+                      resumeId: current.resume.id,
+                      type: 'custom',
+                      title: customDraft.title,
+                      fields: customDraft.fields,
+                      visible: true,
+                      sortOrder: current.sections.length,
+                    },
+                  ],
+            },
+        );
+        setTab(sectionId);
+      }
+    }, [route.params.resumeId]),
+  );
   if (!data) return <View />;
   const r = data.resume;
   const patch = (x: Partial<typeof r>) =>
     setData({ ...data, resume: { ...r, ...x } });
-  const reorder = (index: number, delta: number) => {
-    const ordered = [...data.sections].sort(
-        (a, b) => a.sortOrder - b.sortOrder,
-      ),
-      next = index + delta;
-    if (next < 0 || next >= ordered.length) return;
-    [ordered[index], ordered[next]] = [ordered[next]!, ordered[index]!];
+  const startRenamingSection = (sectionItem: ResumeSection) => {
+    setRenamingSection(sectionItem);
+    setSectionNameDraft(sectionTitle(sectionItem));
+  };
+  const applySectionName = () => {
+    if (!renamingSection) return;
+    const title = sectionNameDraft.trim();
+    if (!title) {
+      Alert.alert('Name required', 'Enter a name for this section.');
+      return;
+    }
+    if (
+      data.sections.some(
+        item =>
+          item.id !== renamingSection.id &&
+          sectionTitle(item).toLowerCase() === title.toLowerCase(),
+      )
+    ) {
+      Alert.alert('Duplicate section', 'Give each section a unique title.');
+      return;
+    }
     setData({
       ...data,
-      sections: ordered.map((x, i) => ({ ...x, sortOrder: i })),
+      sections: data.sections.map(item =>
+        item.id === renamingSection.id ? { ...item, title } : item,
+      ),
     });
+    setRenamingSection(undefined);
   };
+  const confirmRemoveSection = (sectionItem: ResumeSection) =>
+    Alert.alert(
+      `Delete ${sectionTitle(sectionItem)}?`,
+      'The section and all of its entries will be removed when you save.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            setData(
+              current =>
+                current && {
+                  ...current,
+                  sections: current.sections.filter(
+                    item => item.id !== sectionItem.id,
+                  ),
+                  entries: current.entries.filter(item =>
+                    sectionItem.type === 'custom'
+                      ? item.sectionId !== sectionItem.id
+                      : item.type !== sectionItem.type,
+                  ),
+                },
+            );
+            if (tab === sectionItem.id || tab === sectionItem.type)
+              setTab('sections');
+          },
+        },
+      ],
+    );
   const save = async () => {
     if (saving) return;
     try {
@@ -97,8 +198,20 @@ export function EditorScreen({
       );
       setErrors({});
       setSaving(true);
-      if (data.sections.some(item => item.type === 'custom' && !item.title?.trim())) {
+      if (
+        data.sections.some(
+          item => item.type === 'custom' && !item.title?.trim(),
+        )
+      ) {
         Alert.alert('Name required', 'Give every custom section a name.');
+        setTab('sections');
+        return;
+      }
+      if (
+        new Set(data.sections.map(item => sectionTitle(item).toLowerCase()))
+          .size !== data.sections.length
+      ) {
+        Alert.alert('Duplicate section', 'Give each section a unique title.');
         setTab('sections');
         return;
       }
@@ -110,7 +223,10 @@ export function EditorScreen({
         setErrors(validationErrors);
         setTab('basics');
       } else {
-        Alert.alert('Could not save', e instanceof Error ? e.message : 'Please try again.');
+        Alert.alert(
+          'Could not save',
+          e instanceof Error ? e.message : 'Please try again.',
+        );
       }
     } finally {
       setSaving(false);
@@ -123,9 +239,11 @@ export function EditorScreen({
   const sectionEntries =
     tab === 'basics' || tab === 'sections'
       ? []
-      : data.entries.filter(x => section?.type === 'custom'
-        ? x.type === 'custom' && x.sectionId === section.id
-        : x.type === section?.type);
+      : data.entries.filter(x =>
+          section?.type === 'custom'
+            ? x.type === 'custom' && x.sectionId === section.id
+            : x.type === section?.type,
+        );
   return (
     <SafeAreaView style={[s.page, { backgroundColor: c.canvas }]}>
       <ScreenHeader
@@ -134,9 +252,12 @@ export function EditorScreen({
         onBack={navigation.goBack}
         right={
           <Button
-            label="Preview ↗"
+            label="Preview"
+            icon="open-in-new"
             kind="ghost"
-            onPress={() => navigation.navigate('Preview', { resumeId: r.id, draft: data })}
+            onPress={() =>
+              navigation.navigate('Preview', { resumeId: r.id, draft: data })
+            }
           />
         }
       />
@@ -146,8 +267,13 @@ export function EditorScreen({
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={s.tabs}
       >
-        {(['basics', 'sections', ...Object.keys(sectionLabels).filter(x => x !== 'custom'),
-          ...data.sections.filter(x => x.type === 'custom').map(x => x.id)]).map(x => (
+        {[
+          'basics',
+          'sections',
+          ...[...data.sections]
+            .sort((a, b) => a.sortOrder - b.sortOrder)
+            .map(item => (item.type === 'custom' ? item.id : item.type)),
+        ].map(x => (
           <Chip
             key={x}
             label={
@@ -155,14 +281,18 @@ export function EditorScreen({
                 ? 'Basics'
                 : x === 'sections'
                 ? 'Layout'
-                : data.sections.find(s => s.id === x)?.title || sectionLabels[x as SectionType]
+                : sectionTitle(
+                    data.sections.find(
+                      item => item.id === x || item.type === x,
+                    )!,
+                  )
             }
             selected={tab === x}
             onPress={() => setTab(x)}
           />
         ))}
       </ScrollView>
-      <ScrollView
+      <NestableScrollContainer
         key={tab}
         contentContainerStyle={s.content}
         keyboardShouldPersistTaps="handled"
@@ -172,7 +302,7 @@ export function EditorScreen({
             <Text style={[s.heading, { color: c.ink }]}>
               Start with the essentials.
             </Text>
-            <Text style={[s.help, { color: c.muted }]}> 
+            <Text style={[s.help, { color: c.muted }]}>
               These details make the first impression on your CV.
             </Text>
             <Card>
@@ -247,42 +377,74 @@ export function EditorScreen({
                     patch({ personal: { ...r.personal, portfolio } })
                   }
                 />
-                <Field label="Nationality (optional)" value={r.personal.nationality ?? ''}
-                  onChangeText={nationality => patch({ personal: { ...r.personal, nationality } })} />
+                <Field
+                  label="Nationality (optional)"
+                  value={r.personal.nationality ?? ''}
+                  onChangeText={nationality =>
+                    patch({ personal: { ...r.personal, nationality } })
+                  }
+                />
                 <>
-                  <Field label="Gender (optional)" value={r.personal.gender ?? ''}
-                    onChangeText={gender => patch({ personal: { ...r.personal, gender } })} />
-                  <Field label="Date of birth (optional)" value={r.personal.dateOfBirth ?? ''}
-                    onChangeText={dateOfBirth => patch({ personal: { ...r.personal, dateOfBirth } })} />
-                  <Field label="Interests (optional)" value={r.personal.interests ?? ''}
-                    onChangeText={interests => patch({ personal: { ...r.personal, interests } })} />
+                  <Field
+                    label="Gender (optional)"
+                    value={r.personal.gender ?? ''}
+                    onChangeText={gender =>
+                      patch({ personal: { ...r.personal, gender } })
+                    }
+                  />
+                  <Field
+                    label="Date of birth (optional)"
+                    value={r.personal.dateOfBirth ?? ''}
+                    onChangeText={dateOfBirth =>
+                      patch({ personal: { ...r.personal, dateOfBirth } })
+                    }
+                  />
+                  <Field
+                    label="Interests (optional)"
+                    value={r.personal.interests ?? ''}
+                    onChangeText={interests =>
+                      patch({ personal: { ...r.personal, interests } })
+                    }
+                  />
                 </>
-                <Text style={[s.smallTitle, { color: c.ink }]}>Profile photo (optional)</Text>
+                <Text style={[s.smallTitle, { color: c.ink }]}>
+                  Profile photo (optional)
+                </Text>
                 {!!r.personal.photoUri && (
-                  <Image source={{ uri: r.personal.photoUri }} style={s.photoPreview} />
+                  <Image
+                    source={{ uri: r.personal.photoUri }}
+                    style={s.photoPreview}
+                  />
                 )}
                 <Button
+                  icon="image-plus"
                   label={r.personal.photoUri ? 'Change photo' : 'Upload photo'}
                   kind="ghost"
                   onPress={async () => {
                     try {
                       const photoUri = await chooseResumePhoto();
-                      if (photoUri) patch({ personal: { ...r.personal, photoUri } });
+                      if (photoUri)
+                        patch({ personal: { ...r.personal, photoUri } });
                     } catch (error) {
                       Alert.alert(
                         'Could not upload photo',
-                        error instanceof Error ? error.message : 'Please try again.',
+                        error instanceof Error
+                          ? error.message
+                          : 'Please try again.',
                       );
                     }
                   }}
                 />
                 {!!r.personal.photoUri && (
                   <Button
+                    icon="image-remove"
                     label="Remove photo"
                     kind="ghost"
-                    onPress={() => patch({
-                      personal: { ...r.personal, photoUri: undefined },
-                    })}
+                    onPress={() =>
+                      patch({
+                        personal: { ...r.personal, photoUri: undefined },
+                      })
+                    }
                   />
                 )}
               </View>
@@ -298,98 +460,198 @@ export function EditorScreen({
               <Text style={[s.smallTitle, { color: c.ink }]}>Font size</Text>
               <View style={s.choiceRow}>
                 {[0.75, 0.85, 1, 1.15, 1.3, 1.5].map(x => (
-                  <Chip key={x} label={`${Math.round(x * 100)}%`} selected={r.fontScale === x}
-                    onPress={() => patch({ fontScale: x })} />
+                  <Chip
+                    key={x}
+                    label={`${Math.round(x * 100)}%`}
+                    selected={r.fontScale === x}
+                    onPress={() => patch({ fontScale: x })}
+                  />
                 ))}
               </View>
               <Text style={[s.smallTitle, { color: c.ink }]}>Font family</Text>
               <View style={s.choiceRow}>
-                {fontFamilies.map(x => <Chip key={x.key} label={x.label}
-                  selected={(r.style?.fontFamily ?? (r.templateId === 'ats' ? 'serif' : 'sans')) === x.key}
-                  onPress={() => patch({ style: { ...r.style, fontFamily: x.key } })} />)}
+                {fontFamilies.map(x => (
+                  <Chip
+                    key={x.key}
+                    label={x.label}
+                    selected={
+                      (r.style?.fontFamily ??
+                        (r.templateId === 'ats' ? 'serif' : 'sans')) === x.key
+                    }
+                    onPress={() =>
+                      patch({ style: { ...r.style, fontFamily: x.key } })
+                    }
+                  />
+                ))}
               </View>
-              <Text style={[s.smallTitle, { color: c.ink }]}>Accent and design colors</Text>
-              <Text style={[s.help, { color: c.muted }]}>Choose colors for each part of the document.</Text>
-              <Text style={[s.smallTitle, { color: c.ink }]}>Accent / divider</Text>
-              <ColorPicker value={r.accent} onChange={accent => patch({ accent })} />
+              <Text style={[s.smallTitle, { color: c.ink }]}>
+                Accent and design colors
+              </Text>
+              <Text style={[s.help, { color: c.muted }]}>
+                Choose colors for each part of the document.
+              </Text>
+              <Text style={[s.smallTitle, { color: c.ink }]}>
+                Accent / divider
+              </Text>
+              <ColorPicker
+                value={r.accent}
+                onChange={accent => patch({ accent })}
+              />
               {colorRoles.map(({ key, label }) => (
                 <View key={key} style={{ marginTop: 10 }}>
                   <Text style={[s.smallTitle, { color: c.ink }]}>{label}</Text>
-                  <ColorPicker value={r.style?.colors?.[key] ?? (
-                    key === 'sidebar' ? '#293844' : key === 'header' ? r.accent :
-                    key === 'page' ? '#FFFFFF' : key === 'contact' ? '#374151' : '#222222'
-                  )} onChange={value => patch({ style: { ...r.style,
-                    colors: { ...r.style?.colors, [key]: value } } })} />
+                  <ColorPicker
+                    value={
+                      r.style?.colors?.[key] ??
+                      (key === 'sidebar'
+                        ? '#293844'
+                        : ['header', 'divider', 'sectionBackground'].includes(
+                            key,
+                          )
+                        ? r.accent
+                        : key === 'photoBorder' || key === 'sidebarHeading'
+                        ? '#FFFFFF'
+                        : key === 'page'
+                        ? '#FFFFFF'
+                        : key === 'contact'
+                        ? '#374151'
+                        : '#222222')
+                    }
+                    onChange={value =>
+                      patch({
+                        style: {
+                          ...r.style,
+                          colors: { ...r.style?.colors, [key]: value },
+                        },
+                      })
+                    }
+                  />
                 </View>
               ))}
             </Card>
-            <View style={s.gap}>
-              {[...data.sections]
-                .sort((a, b) => a.sortOrder - b.sortOrder)
-                .map((x, i) => (
-                  <Card key={x.id}>
-                    <View style={s.orderRow}>
-                      <Switch
-                        value={x.visible}
-                        onValueChange={visible =>
-                          setData({
-                            ...data,
-                            sections: data.sections.map(z =>
-                              z.id === x.id ? { ...z, visible } : z,
-                            ),
-                          })
-                        }
-                      />
-                      <Text style={[s.orderTitle, { color: c.ink }]}>
-                        {sectionTitle(x)}
-                      </Text>
-                      <Pressable onPress={() => reorder(i, -1)}>
-                        <Text style={s.orderButton}>↑</Text>
+            <NestableDraggableFlatList
+              data={[...data.sections].sort((a, b) => a.sortOrder - b.sortOrder)}
+              keyExtractor={item => item.id}
+              activationDistance={8}
+              contentContainerStyle={s.dragList}
+              onDragEnd={({ data: nextSections }) =>
+                setData({
+                  ...data,
+                  sections: nextSections.map((item, index) => ({
+                    ...item,
+                    sortOrder: index,
+                  })),
+                })
+              }
+              renderItem={({ item: x, drag, isActive }) => {
+                const sectionCard = (
+                  <ScaleDecorator>
+                    <Card style={isActive ? s.draggingCard : undefined}>
+                      <View style={s.orderRow}>
+                        <Pressable
+                          accessibilityRole="button"
+                          accessibilityLabel={`Drag ${sectionTitle(x)}`}
+                          accessibilityHint="Press and hold, then drag to reorder"
+                          delayLongPress={120}
+                          disabled={isActive}
+                          onLongPress={drag}
+                          style={({ pressed }) => [
+                            s.dragHandle,
+                            { backgroundColor: c.primarySoft, borderColor: c.line },
+                            pressed && s.dragHandlePressed,
+                          ]}
+                        >
+                          <AppIcon name="drag-vertical" size={24} color={c.primary} />
+                        </Pressable>
+                        <Switch
+                          value={x.visible}
+                          onValueChange={visible =>
+                            setData({
+                              ...data,
+                              sections: data.sections.map(z =>
+                                z.id === x.id ? { ...z, visible } : z,
+                              ),
+                            })
+                          }
+                        />
+                        <Pressable
+                          style={s.orderTitlePressable}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Rename ${sectionTitle(x)}`}
+                          accessibilityHint="Long press to edit this section name"
+                          delayLongPress={350}
+                          onLongPress={() => startRenamingSection(x)}
+                        >
+                          <Text style={[s.orderTitle, { color: c.ink }]}> 
+                            {sectionTitle(x)}
+                          </Text>
+                          <Text style={[s.longPressHint, { color: c.muted }]}> 
+                            Long press to rename
+                          </Text>
+                        </Pressable>
+                        {x.type === 'custom' && (
+                          <IconButton
+                            icon="pencil-outline"
+                            accessibilityLabel={`Edit ${sectionTitle(x)} fields`}
+                            onPress={() =>
+                              navigation.navigate('CustomSection', {
+                                resumeId: r.id,
+                                sectionId: x.id,
+                                title: x.title,
+                                fields: x.fields?.length
+                                  ? x.fields
+                                  : customFieldsFor(x),
+                              })
+                            }
+                          />
+                        )}
+                        <ColorPicker
+                          compact
+                          value={
+                            x.color ||
+                            r.style?.colors?.sectionHeading ||
+                            r.accent
+                          }
+                          onChange={color =>
+                            setData({
+                              ...data,
+                              sections: data.sections.map(z =>
+                                z.id === x.id ? { ...z, color } : z,
+                              ),
+                            })
+                          }
+                        />
+                      </View>
+                    </Card>
+                  </ScaleDecorator>
+                );
+                return x.type === 'custom' ? (
+                  <Swipeable
+                    overshootRight={false}
+                    renderRightActions={() => (
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel={`Delete ${sectionTitle(x)}`}
+                        onPress={() => confirmRemoveSection(x)}
+                        style={[s.swipeDelete, { backgroundColor: c.danger }]}
+                      >
+                        <AppIcon name="delete-outline" size={26} color="#FFFFFF" />
                       </Pressable>
-                      <Pressable onPress={() => reorder(i, 1)}>
-                        <Text style={s.orderButton}>↓</Text>
-                      </Pressable>
-                    </View>
-                    {x.type === 'custom' && <>
-                      <Field label="Section name" value={x.title ?? ''}
-                        onChangeText={title => setData({ ...data, sections: data.sections.map(z =>
-                          z.id === x.id ? { ...z, title } : z) })} />
-                      <Button kind="danger" label="Remove custom section" onPress={() =>
-                        Alert.alert('Remove section?', 'Its entries will also be removed when you save.', [
-                          { text: 'Cancel', style: 'cancel' },
-                          { text: 'Remove', style: 'destructive', onPress: () => {
-                            setData(current => current && ({ ...current,
-                              sections: current.sections.filter(z => z.id !== x.id),
-                              entries: current.entries.filter(e => e.sectionId !== x.id),
-                            }));
-                            if (tab === x.id) setTab('sections');
-                          } },
-                        ])} />
-                    </>}
-                    <Text style={[s.smallTitle, { color: c.ink }]}>Section heading color</Text>
-                    <ColorPicker value={x.color || r.style?.colors?.sectionHeading || r.accent}
-                      onChange={color => setData({ ...data, sections: data.sections.map(z =>
-                        z.id === x.id ? { ...z, color } : z) })} />
-                  </Card>
-                ))}
-            </View>
+                    )}
+                  >
+                    {sectionCard}
+                  </Swipeable>
+                ) : sectionCard;
+              }}
+            />
             <Card>
-              <Field label="New section name" placeholder="e.g. Publications, Volunteer work"
-                value={newSection} onChangeText={setNewSection} />
-              <Button label="＋ Add custom section" onPress={() => {
-                const title = newSection.trim();
-                if (!title) { Alert.alert('Name required', 'Enter a section name.'); return; }
-                if (data.sections.some(x => sectionTitle(x).toLowerCase() === title.toLowerCase())) {
-                  Alert.alert('Already exists', 'Choose a different section name.'); return;
+              <Button
+                icon="plus"
+                label="Create custom section"
+                onPress={() =>
+                  navigation.navigate('CustomSection', { resumeId: r.id })
                 }
-                const id = makeId();
-                setData({ ...data, sections: [...data.sections, {
-                  id, resumeId: r.id, type: 'custom', title, visible: true,
-                  sortOrder: data.sections.length,
-                }] });
-                setNewSection('');
-                setTab(id);
-              }} />
+              />
             </Card>
           </>
         ) : tab === 'summary' ? (
@@ -442,7 +704,7 @@ export function EditorScreen({
             <View style={s.sectionHead}>
               <View>
                 <Text style={[s.heading, { color: c.ink }]}>
-                  {section ? sectionTitle(section) : "Section"}
+                  {section ? sectionTitle(section) : 'Section'}
                 </Text>
                 <Text style={[s.help, { color: c.muted }]}>
                   Add, edit and organize structured details.
@@ -465,46 +727,117 @@ export function EditorScreen({
                 <Pressable key={e.id} onPress={() => setEntry(e)}>
                   <Card>
                     <Text style={[s.entryTitle, { color: c.ink }]}>
-                      {e.title || `Untitled ${section ? sectionTitle(section) : "Section"}`}
+                      {(section?.type === 'custom'
+                        ? displayCustomEntry(e, section).title
+                        : e.title) ||
+                        `Untitled ${
+                          section ? sectionTitle(section) : 'Section'
+                        }`}
                     </Text>
                     <Text style={[s.entrySub, { color: c.muted }]}>
-                      {e.subtitle || 'Tap to add details'}
+                      {(section?.type === 'custom'
+                        ? displayCustomEntry(e, section).subtitle
+                        : e.subtitle) || 'Tap to add details'}
                     </Text>
                   </Card>
                 </Pressable>
               ))}
               <Button
-                label={`＋ Add ${section ? sectionTitle(section) : "Section"}`}
-                onPress={() => setEntry({
-                  id: makeId(),
-                  resumeId: r.id,
-                  type: section?.type ?? 'custom', sectionId: section?.type === 'custom' ? section.id : undefined,
-                  title: '', subtitle: '', startDate: '', endDate: '',
-                  details: '', meta: '', sortOrder: Date.now(),
-                })}
+                icon="plus"
+                label={`Add ${section ? sectionTitle(section) : 'Section'}`}
+                onPress={() =>
+                  setEntry({
+                    id: makeId(),
+                    resumeId: r.id,
+                    type: section?.type ?? 'custom',
+                    sectionId:
+                      section?.type === 'custom' ? section.id : undefined,
+                    title: '',
+                    subtitle: '',
+                    startDate: '',
+                    endDate: '',
+                    details: '',
+                    meta: '',
+                    sortOrder: Date.now(),
+                  })
+                }
               />
             </View>
           </>
         )}
-      </ScrollView>
+      </NestableScrollContainer>
+      <Modal
+        visible={!!renamingSection}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setRenamingSection(undefined)}
+      >
+        <View style={[s.renameScrim, { backgroundColor: c.overlay + 'CC' }]}>
+          <View
+            style={[
+              s.renameCard,
+              { backgroundColor: c.surface, borderColor: c.line },
+            ]}
+          >
+            <Text style={[s.renameTitle, { color: c.ink }]}>
+              Rename section
+            </Text>
+            <Text style={[s.help, { color: c.muted }]}>
+              This name will be used in the editor and on the resume.
+            </Text>
+            <Field
+              label="Section name"
+              value={sectionNameDraft}
+              autoFocus
+              returnKeyType="done"
+              onSubmitEditing={applySectionName}
+              onChangeText={setSectionNameDraft}
+            />
+            <View style={s.renameActions}>
+              <View style={s.renameAction}>
+                <Button
+                  icon="close"
+                  label="Cancel"
+                  kind="ghost"
+                  onPress={() => setRenamingSection(undefined)}
+                />
+              </View>
+              <View style={s.renameAction}>
+                <Button icon="check" label="Apply" onPress={applySectionName} />
+              </View>
+            </View>
+          </View>
+        </View>
+      </Modal>
       <EntryModal
         value={entry}
         sectionName={section ? sectionTitle(section) : undefined}
+        customFields={
+          section?.type === 'custom' ? customFieldsFor(section) : undefined
+        }
         onClose={() => setEntry(undefined)}
         onDone={saved => {
-          setData(current => current && ({
-            ...current,
-            entries: current.entries.some(item => item.id === saved.id)
-              ? current.entries.map(item => item.id === saved.id ? saved : item)
-              : [...current.entries, saved],
-          }));
+          setData(
+            current =>
+              current && {
+                ...current,
+                entries: current.entries.some(item => item.id === saved.id)
+                  ? current.entries.map(item =>
+                      item.id === saved.id ? saved : item,
+                    )
+                  : [...current.entries, saved],
+              },
+          );
           setEntry(undefined);
         }}
         onDelete={id => {
-          setData(current => current && ({
-            ...current,
-            entries: current.entries.filter(item => item.id !== id),
-          }));
+          setData(
+            current =>
+              current && {
+                ...current,
+                entries: current.entries.filter(item => item.id !== id),
+              },
+          );
           setEntry(undefined);
         }}
       />
@@ -512,11 +845,17 @@ export function EditorScreen({
         style={[s.bottom, { backgroundColor: c.header, borderColor: c.line }]}
       >
         <Button
+          icon="view-grid-outline"
           label="Change template"
           kind="ghost"
           onPress={() => navigation.navigate('Templates', { resumeId: r.id })}
         />
-        <Button label={saving ? 'Saving…' : '✓ Save'} disabled={saving} onPress={save} />
+        <Button
+          icon="content-save-outline"
+          label={saving ? 'Saving…' : 'Save'}
+          disabled={saving}
+          onPress={save}
+        />
       </View>
     </SafeAreaView>
   );
@@ -527,9 +866,11 @@ function EntryModal({
   onDone,
   onDelete,
   sectionName,
+  customFields,
 }: {
   value?: Entry;
   sectionName?: string;
+  customFields?: import('../types').CustomField[];
   onClose: () => void;
   onDone: (entry: Entry) => void;
   onDelete: (id: string) => void;
@@ -547,9 +888,7 @@ function EntryModal({
   return (
     <Modal animationType="slide" presentationStyle="pageSheet">
       <SafeAreaView style={[s.modal, { backgroundColor: c.canvas }]}>
-        <StatusBar
-          barStyle={darkMode ? 'light-content' : 'dark-content'}
-        />
+        <StatusBar barStyle={darkMode ? 'light-content' : 'dark-content'} />
         <ScrollView
           style={{ backgroundColor: c.canvas }}
           contentContainerStyle={s.content}
@@ -559,102 +898,174 @@ function EntryModal({
             Edit {sectionName || sectionLabels[draft.type]}
           </Text>
           <View style={s.form}>
-            <Field
-              label={fields?.title ?? 'Title'}
-              value={draft.title}
-              onChangeText={title => p({ title })}
-            />
-            {!!fields?.subtitle && (
-              <Field
-                label={fields.subtitle}
-                value={draft.subtitle}
-                onChangeText={subtitle => p({ subtitle })}
-              />
-            )}
-            {fields?.extras?.map(field => (
-              <Field
-                key={field.key}
-                label={field.label}
-                placeholder={field.placeholder}
-                value={extras[field.key] ?? ''}
-                autoCapitalize={
-                  field.key === 'email' || field.key === 'url'
-                    ? 'none'
-                    : 'sentences'
-                }
-                keyboardType={
-                  field.key === 'email'
-                    ? 'email-address'
-                    : field.key === 'phone'
+            {draft.type === 'custom' && customFields ? (
+              customFields.map(field => (
+                <Field
+                  key={field.id}
+                  label={field.label}
+                  value={
+                    draft.customValues?.[field.id] ??
+                    (field.id === 'title'
+                      ? draft.title
+                      : field.id === 'subtitle'
+                      ? draft.subtitle
+                      : field.id === 'startDate'
+                      ? draft.startDate
+                      : field.id === 'endDate'
+                      ? draft.endDate
+                      : field.id === 'details'
+                      ? draft.details
+                      : '')
+                  }
+                  multiline={field.kind === 'multiline'}
+                  keyboardType={
+                    field.kind === 'email'
+                      ? 'email-address'
+                      : field.kind === 'phone'
                       ? 'phone-pad'
+                      : field.kind === 'url'
+                      ? 'url'
                       : 'default'
-                }
-                onChangeText={value => patchExtra(field.key, value)}
-              />
-            ))}
-            {!!fields?.startDate && (
-              <View style={s.dateRow}>
-                <View style={s.dateField}>
+                  }
+                  autoCapitalize={
+                    field.kind === 'email' || field.kind === 'url'
+                      ? 'none'
+                      : 'sentences'
+                  }
+                  onChangeText={value =>
+                    p({
+                      customValues: {
+                        ...Object.fromEntries(
+                          customFields.map(item => [
+                            item.id,
+                            draft.customValues?.[item.id] ??
+                              (item.id === 'title'
+                                ? draft.title
+                                : item.id === 'subtitle'
+                                ? draft.subtitle
+                                : item.id === 'startDate'
+                                ? draft.startDate
+                                : item.id === 'endDate'
+                                ? draft.endDate
+                                : item.id === 'details'
+                                ? draft.details
+                                : ''),
+                          ]),
+                        ),
+                        [field.id]: value,
+                      },
+                    })
+                  }
+                />
+              ))
+            ) : (
+              <>
+                <Field
+                  label={fields?.title ?? 'Title'}
+                  value={draft.title}
+                  onChangeText={title => p({ title })}
+                />
+                {!!fields?.subtitle && (
                   <Field
-                    label={fields.startDate}
-                    placeholder="2023-01"
-                    value={draft.startDate}
-                    onChangeText={startDate => p({ startDate })}
+                    label={fields.subtitle}
+                    value={draft.subtitle}
+                    onChangeText={subtitle => p({ subtitle })}
                   />
-                </View>
-                <View style={s.dateField}>
+                )}
+                {fields?.extras?.map(field => (
                   <Field
-                    label={fields.endDate ?? 'End date'}
-                    placeholder="Present / 2024-12"
-                    value={draft.endDate}
-                    onChangeText={endDate => p({ endDate })}
+                    key={field.key}
+                    label={field.label}
+                    placeholder={field.placeholder}
+                    value={extras[field.key] ?? ''}
+                    autoCapitalize={
+                      field.key === 'email' || field.key === 'url'
+                        ? 'none'
+                        : 'sentences'
+                    }
+                    keyboardType={
+                      field.key === 'email'
+                        ? 'email-address'
+                        : field.key === 'phone'
+                        ? 'phone-pad'
+                        : 'default'
+                    }
+                    onChangeText={value => patchExtra(field.key, value)}
                   />
-                </View>
-              </View>
+                ))}
+                {!!fields?.startDate && (
+                  <View style={s.dateRow}>
+                    <View style={s.dateField}>
+                      <Field
+                        label={fields.startDate}
+                        placeholder="2023-01"
+                        value={draft.startDate}
+                        onChangeText={startDate => p({ startDate })}
+                      />
+                    </View>
+                    <View style={s.dateField}>
+                      <Field
+                        label={fields.endDate ?? 'End date'}
+                        placeholder="Present / 2024-12"
+                        value={draft.endDate}
+                        onChangeText={endDate => p({ endDate })}
+                      />
+                    </View>
+                  </View>
+                )}
+                {!!fields?.details && (
+                  <Field
+                    label={fields.details}
+                    multiline={fields.detailsMultiline}
+                    value={draft.details}
+                    onChangeText={details => p({ details })}
+                  />
+                )}
+                {draft.type === 'experience' && (
+                  <Text style={[s.smallTitle, { color: c.ink }]}>
+                    Add a starter bullet
+                  </Text>
+                )}
+                {draft.type === 'experience' &&
+                  bulletExamples.map(x => (
+                    <Pressable
+                      key={x}
+                      style={[s.example, { backgroundColor: c.primarySoft }]}
+                      onPress={() =>
+                        p({
+                          details: [draft.details, x]
+                            .filter(Boolean)
+                            .join('\n• '),
+                        })
+                      }
+                    >
+                      <Text style={[s.exampleText, { color: c.muted }]}>
+                        {x}
+                      </Text>
+                    </Pressable>
+                  ))}
+                {!!extras.legacy && (
+                  <Field
+                    label="Additional information from an earlier entry"
+                    value={extras.legacy}
+                    onChangeText={legacy => patchExtra('legacy', legacy)}
+                  />
+                )}
+              </>
             )}
-            {!!fields?.details && (
-              <Field
-                label={fields.details}
-                multiline={fields.detailsMultiline}
-                value={draft.details}
-                onChangeText={details => p({ details })}
-              />
-            )}
-            {draft.type === 'experience' && (
-              <Text style={[s.smallTitle, { color: c.ink }]}>
-                Add a starter bullet
-              </Text>
-            )}
-            {draft.type === 'experience' && bulletExamples.map(x => (
-              <Pressable
-                key={x}
-                style={[s.example, { backgroundColor: c.primarySoft }]}
-                onPress={() =>
-                  p({
-                    details: [draft.details, x].filter(Boolean).join('\n• '),
-                  })
-                }
-              >
-                <Text style={[s.exampleText, { color: c.muted }]}>＋ {x}</Text>
-              </Pressable>
-            ))}
-            {!!extras.legacy && (
-              <Field
-                label="Additional information from an earlier entry"
-                value={extras.legacy}
-                onChangeText={legacy => patchExtra('legacy', legacy)}
-              />
-            )}
+            <Button icon="check" label="Done" onPress={() => onDone(draft)} />
             <Button
-              label="✓ Done"
-              onPress={() => onDone(draft)}
-            />
-            <Button
-              label="⌫ Delete entry"
+              icon="delete-outline"
+              label="Delete entry"
               kind="danger"
               onPress={() => onDelete(draft.id)}
             />
-            <Button label="× Cancel" kind="ghost" onPress={onClose} />
+            <Button
+              icon="close"
+              label="Cancel"
+              kind="ghost"
+              onPress={onClose}
+            />
           </View>
         </ScrollView>
       </SafeAreaView>
@@ -715,13 +1126,44 @@ const s = StyleSheet.create({
   swatch: { width: 31, height: 31, borderRadius: 16 },
   swatchOn: { borderWidth: 4, borderColor: '#C7C9D2' },
   orderRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  orderTitle: { flex: 1, fontWeight: '800', color: colors.ink },
+  dragList: { gap: 10 },
+  dragHandle: {
+    width: 36,
+    height: 42,
+    borderRadius: 10,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dragHandlePressed: { opacity: 0.65 },
+  draggingCard: { opacity: 0.96, elevation: 8 },
+  orderTitlePressable: { flex: 1, minWidth: 0 },
+  orderTitle: { fontWeight: '800', color: colors.ink },
+  longPressHint: { fontSize: 10, marginTop: 2 },
+  swipeDelete: {
+    width: 72,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderTopRightRadius: 14,
+    borderBottomRightRadius: 14,
+  },
+  sectionActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 8,
+    marginTop: 10,
+  },
   orderButton: {
     fontSize: 19,
     fontWeight: '900',
     color: colors.primary,
     paddingHorizontal: 8,
   },
+  renameScrim: { flex: 1, justifyContent: 'center', padding: 22 },
+  renameCard: { borderWidth: 1, borderRadius: 18, padding: 18, gap: 14 },
+  renameTitle: { fontSize: 20, fontWeight: '900' },
+  renameActions: { flexDirection: 'row', gap: 10 },
+  renameAction: { flex: 1 },
   bottom: {
     position: 'absolute',
     bottom: 0,
@@ -738,5 +1180,10 @@ const s = StyleSheet.create({
   modal: { flex: 1, backgroundColor: colors.canvas },
   dateRow: { flexDirection: 'row', gap: 10 },
   dateField: { flex: 1, minWidth: 0 },
-  photoPreview: { width: 84, height: 84, borderRadius: 42, alignSelf: 'center' },
+  photoPreview: {
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    alignSelf: 'center',
+  },
 });

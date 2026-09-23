@@ -27,7 +27,7 @@ export function ReferenceResumePreview({
   return (
     <View style={[s.page, { backgroundColor: style.page }]}>
       <View style={[s.header, { backgroundColor: style.header }]}>
-        {!!p.photoUri && <Image source={{ uri: p.photoUri }} style={s.photo} />}
+        {!!p.photoUri && <Image source={{ uri: p.photoUri }} style={[s.photo, { borderColor: style.photoBorder, borderWidth: style.photoBorder ? 2 : 0 }]} />}
         <View style={s.identity}>
           <Text style={[s.name, { fontSize: 23 * scale, color: style.name, fontFamily }]}>{p.fullName || 'Your Name'}</Text>
           <Text style={[s.headline, { fontSize: 10 * scale, color: style.headline, fontFamily }]}>{p.headline}</Text>
@@ -49,9 +49,10 @@ export function ReferenceResumePreview({
           if (section.type !== 'summary' && !items.length) return null;
           return (
             <View key={section.id} style={s.section}>
-              <View style={[s.badge, { backgroundColor: section.color || accent }]}>
+              <View style={[s.badge, { backgroundColor: style.sectionBackground || section.color || accent,
+                borderColor: style.divider, borderWidth: style.divider ? 1 : 0 }]}>
                 <Text style={[s.badgeText, { color: style.sectionHeading, fontFamily }]}>
-                  {section.type === 'summary' ? 'Summary' : sectionTitle(section)}
+                  {sectionTitle(section)}
                 </Text>
               </View>
               {section.type === 'summary' ? (

@@ -18,6 +18,8 @@ const migrations = [
   `ALTER TABLE sections ADD COLUMN title TEXT NOT NULL DEFAULT '';
    ALTER TABLE sections ADD COLUMN color TEXT NOT NULL DEFAULT '';
    ALTER TABLE entries ADD COLUMN sectionId TEXT NOT NULL DEFAULT '';`,
+  `ALTER TABLE sections ADD COLUMN fieldsJson TEXT NOT NULL DEFAULT '[]';
+   ALTER TABLE entries ADD COLUMN customJson TEXT NOT NULL DEFAULT '{}';`,
 ];
 export async function db() {
   if (instance) return instance;

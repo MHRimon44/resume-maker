@@ -32,7 +32,19 @@ export type ColorRole =
   | 'sectionHeading'
   | 'entryTitle'
   | 'meta'
-  | 'body';
+  | 'body'
+  | 'divider'
+  | 'photoBorder'
+  | 'sidebarHeading'
+  | 'sectionBackground';
+export type CustomFieldKind =
+  | 'text'
+  | 'multiline'
+  | 'date'
+  | 'url'
+  | 'email'
+  | 'phone';
+export type CustomField = { id: string; label: string; kind: CustomFieldKind };
 export type ResumeStyle = {
   fontFamily?: FontFamily;
   colors?: Partial<Record<ColorRole, string>>;
@@ -77,6 +89,7 @@ export type Entry = {
   meta: string;
   sortOrder: number;
   sectionId?: string;
+  customValues?: Record<string, string>;
 };
 export type ResumeSection = {
   id: string;
@@ -86,6 +99,7 @@ export type ResumeSection = {
   sortOrder: number;
   title?: string;
   color?: string;
+  fields?: CustomField[];
 };
 export type ResumeBundle = {
   resume: Resume;
@@ -98,4 +112,10 @@ export type RootStackParamList = {
   Editor: { resumeId: string };
   Preview: { resumeId: string; draft?: ResumeBundle };
   Settings: undefined;
+  CustomSection: {
+    resumeId: string;
+    sectionId?: string;
+    title?: string;
+    fields?: CustomField[];
+  };
 };
