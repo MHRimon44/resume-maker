@@ -603,7 +603,7 @@ export function EditorScreen({
                             ),
                           })
                         }
-                      />{' '}
+                      />
                       <Switch
                         value={x.visible}
                         onValueChange={visible =>
